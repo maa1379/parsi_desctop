@@ -1,0 +1,79 @@
+name: parsi
+description: "A new Flutter project."
+
+publish_to: 'none'
+
+version: 1.1.2+3
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.5+1
+  icons_launcher: ^3.0.3
+  rename: ^3.1.0
+  image_picker: ^1.2.1
+  lottie:
+  app_links: ^7.0.0
+  dart_ping: ^9.0.1
+  http:
+  humanizer: ^3.0.1
+  gap: ^3.0.1
+  url_launcher: ^6.3.2
+  shared_preferences: ^2.5.4
+  intl: ^0.20.2
+  auto_size_text:
+  neat_periodic_task: ^2.0.1
+  package_info_plus: any
+  percent_indicator:
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
+  gauge_indicator: ^0.4.3
+  syncfusion_flutter_gauges:
+  mobile_device_identifier: ^0.0.3
+  flutter_v2ray_client_desktop:
+    path: ../flutter_v2ray_client_desktop
+  webview_flutter:
+  internet_connection_checker_plus: ^2.9.1+2
+  video_player: 2.10.1
+  chewie: 1.13.0
+  async: ^2.13.0
+  persian_number_utility: 1.1.6
+  badges:
+  traffic_stats: ^0.0.2
+  ffi: ^2.1.5
+  path_provider: ^2.1.5
+  path:
+  device_info_plus:
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+
+  fonts:
+    - family: BHoma
+      fonts:
+        - asset: assets/fonts/BHoma.ttf
+
+
+
+icons_launcher:
+  image_path: "assets/images/logo2.png"
+  platforms:
+    android:
+      enable: true
+      image_path: "assets/images/logo2.png"

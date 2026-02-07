@@ -1,0 +1,86 @@
+{
+  "project_info": {
+    "project_number": "555946134292",
+    "project_id": "pasri-8b757",
+    "storage_bucket": "pasri-8b757.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:555946134292:android:b56c24760bdc62320ad001",
+        "android_client_info": {
+          "package_name": "com.example.parsi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLVK-9v2Mt6f4koXkFxgXkziVqcoLkcPc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:555946134292:android:542fb4f3da624b200ad001",
+        "android_client_info": {
+          "package_name": "com.example.parsi_admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLVK-9v2Mt6f4koXkFxgXkziVqcoLkcPc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:555946134292:android:a99ac30e0a9b822e0ad001",
+        "android_client_info": {
+          "package_name": "com.parsi.parsi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLVK-9v2Mt6f4koXkFxgXkziVqcoLkcPc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:555946134292:android:9a88a879b167a9460ad001",
+        "android_client_info": {
+          "package_name": "com.tivasoft.mes_bro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLVK-9v2Mt6f4koXkFxgXkziVqcoLkcPc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
