@@ -13,51 +13,53 @@ dependencies:
     sdk: flutter
 
 
-  cupertino_icons: ^1.0.8
-  provider: ^6.1.5+1
-  icons_launcher: ^3.0.3
-  rename: ^3.1.0
-  image_picker: ^1.2.1
+  cupertino_icons:
+  provider:
+  icons_launcher:
+  rename:
+  image_picker:
   lottie:
-  app_links: ^7.0.0
-  dart_ping: ^9.0.1
+  app_links:
+  dart_ping:
   http:
-  humanizer: ^3.0.1
-  gap: ^3.0.1
-  url_launcher: ^6.3.2
-  shared_preferences: ^2.5.4
-  intl: ^0.20.2
+  humanizer:
+  gap:
+  url_launcher:
+  shared_preferences:
+  intl:
   auto_size_text:
-  neat_periodic_task: ^2.0.1
+  neat_periodic_task:
   package_info_plus: any
   percent_indicator:
-  cached_network_image: ^3.4.1
-  flutter_cache_manager: ^3.4.1
-  gauge_indicator: ^0.4.3
+  cached_network_image:
+  flutter_cache_manager:
+  gauge_indicator:
   syncfusion_flutter_gauges:
-  mobile_device_identifier: ^0.0.3
+  mobile_device_identifier:
   flutter_v2ray_client_desktop:
-    path: ../flutter_v2ray_client_desktop
+    git:
+      url: https://github.com/maa1379/desktopVpnSrc.git
+      ref: main
   webview_flutter:
-  internet_connection_checker_plus: ^2.9.1+2
-  video_player: 2.10.1
-  chewie: 1.13.0
-  async: ^2.13.0
-  persian_number_utility: 1.1.6
+  internet_connection_checker_plus:
+  video_player:
+  chewie:
+  async:
+  persian_number_utility:
   badges:
-#  traffic_stats: ^0.0.2
-  ffi: ^2.1.5
-  path_provider: ^2.1.5
+#  traffic_stats:
+  ffi:
+  path_provider:
   path:
   device_info_plus:
-  window_manager: ^0.5.1
+  window_manager:
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^5.0.0
+  flutter_lints:
 
 
 flutter:
