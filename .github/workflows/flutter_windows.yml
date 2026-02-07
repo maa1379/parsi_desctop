@@ -39,7 +39,7 @@ jobs:
 
       # اصلاح شده: استفاده از اکشن معتبر برای نصب Inno Setup
       - name: Setup Inno Setup
-        uses: dsznajder/setup-inno-setup@v2
+        run: choco install innosetup --yes
 
       # ساخت فایل نصبی با استفاده از اسکریپتی که ساختید
       - name: Compile Installer
