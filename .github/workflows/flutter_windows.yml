@@ -37,18 +37,17 @@ jobs:
       - name: Build Windows (Release)
         run: flutter build windows --release
 
-      # --- مرحله جدید: نصب و اجرای Inno Setup ---
+      # اصلاح شده: استفاده از اکشن معتبر برای نصب Inno Setup
       - name: Setup Inno Setup
-        uses: Minionguyjosh/setup-inno-setup@v1
-        with:
-          version: "6.2.1"
+        uses: dsznajder/setup-inno-setup-action@v1.0.1
 
+      # ساخت فایل نصبی با استفاده از اسکریپتی که ساختید
       - name: Compile Installer
         run: iscc installer.iss
-      # ----------------------------------------
 
+      # آپلود فایل نهایی
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ParsiVPN-Installer
-          path: ParsiVPN_Setup.exe
+          path: Output/ParsiVPN_Setup.exe
