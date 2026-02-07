@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:ui'; // برای Blur
+import 'dart:io'; // برای تشخیص پلتفرم
+import 'dart:ui';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:badges/badges.dart' as badge;
@@ -19,8 +20,10 @@ import 'package:parsi/screens/widgets/speed_test/speed_test_screen.dart';
 import 'package:parsi/screens/widgets/vpn_speed_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+// اضافه کردن پکیج دسکتاپ برای دسترسی به Enum ها
+import 'package:flutter_v2ray_client_desktop/flutter_v2ray_client_desktop.dart' as desktop;
 
-import '../core/nav_helper.dart'; // برای نویگیشن
+import '../core/nav_helper.dart';
 import '../core/utils.dart';
 import '../generated/assets.dart';
 import '../provider/baclground_service_Provider.dart';
@@ -52,7 +55,6 @@ class _MainScreenState extends State<MainScreen>
     getData();
   }
 
-
   void getData() async {
     _userProvider = Provider.of<UserProvider>(context, listen: false);
     _vpnProvider = context.read<VpnProvider>();
@@ -72,9 +74,6 @@ class _MainScreenState extends State<MainScreen>
       );
     });
 
-    // اینجا چک اولیه انجام می‌شود
-    // خود initData در Provider انجام می‌شود، ما فقط UI را می‌سازیم
-
     await Provider.of<ServerProvider>(context, listen: false).initData();
     Provider.of<NotificationProvider>(context, listen: false).initData();
     final background = Provider.of<BackgroundServiceProvider>(
@@ -90,6 +89,7 @@ class _MainScreenState extends State<MainScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _vpnProvider.animationController?.dispose();
+    _userProvider.disposed();
     super.dispose();
   }
 
@@ -97,8 +97,7 @@ class _MainScreenState extends State<MainScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      // وقتی کاربر به برنامه برمی‌گردد، دوباره وضعیت را چک کن
-      _userProvider.getActiveSubAccount(); // درخواست به سرور برای آپدیت وضعیت
+      _userProvider.getActiveSubAccount();
       final background = Provider.of<BackgroundServiceProvider>(
         context,
         listen: false,
@@ -107,12 +106,168 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
-  // 2022@parsi
+  // --- ویجت دیالوگ پسورد سودو ---
+  Future<void> _promptForSudoPassword() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: AlertDialog(
+              backgroundColor: const Color(0xFF2A2D32),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.security, color: Colors.amber),
+                  SizedBox(width: 10),
+                  Text('مجوز دسترسی سیستمی', style: TextStyle(color: Colors.white, fontSize: 16)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'برای استفاده از حالت TUN/VPN در ${Platform.isMacOS ? 'مک' : 'لینوکس'}، نیاز به دسترسی ادمین (Sudo) است.\nلطفا رمز سیستم خود را وارد کنید.',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    obscureText: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.black26,
+                      labelText: 'رمز سیستم (Password)',
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.amber),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    // اگر کنسل کرد، برمی‌گردیم به حالت پروکسی
+                    context.read<VpnProvider>().setConnectionType(desktop.ConnectionType.systemProxy);
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('انصراف', style: TextStyle(color: Colors.redAccent)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                  ),
+                  onPressed: () => Navigator.of(context).pop(controller.text),
+                  child: const Text('تایید'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result != null && result.isNotEmpty) {
+      context.read<VpnProvider>().setSudoPassword(result);
+    }
+  }
+
+  // --- ویجت سوییچ بین VPN و Proxy ---
+  Widget _buildConnectionModeSwitch() {
+    return Consumer<VpnProvider>(
+      builder: (context, vpnProvider, child) {
+        // مخفی کردن سوییچ وقتی متصل هستیم
+        if (vpnProvider.state == VpnConnectionState.connected ||
+            vpnProvider.state == VpnConnectionState.disconnecting) {
+          return const SizedBox.shrink();
+        }
+
+        final isVpn = vpnProvider.connectionType == desktop.ConnectionType.vpn;
+
+        return Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // دکمه پروکسی
+              GestureDetector(
+                onTap: () => vpnProvider.setConnectionType(desktop.ConnectionType.systemProxy),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: !isVpn ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.language, size: 16, color: !isVpn ? Colors.blueAccent : Colors.grey),
+                      const SizedBox(width: 6),
+                      Text("Proxy", style: TextStyle(
+                          color: !isVpn ? Colors.white : Colors.grey,
+                          fontSize: 12,
+                          fontWeight: !isVpn ? FontWeight.bold : FontWeight.normal
+                      )),
+                    ],
+                  ),
+                ),
+              ),
+              // دکمه VPN
+              GestureDetector(
+                onTap: () async {
+                  vpnProvider.setConnectionType(desktop.ConnectionType.vpn);
+                  // اگر مک یا لینوکس بود و پسورد نداشت، بپرس
+                  if ((Platform.isMacOS || Platform.isLinux) && !vpnProvider.hasSudoPassword) {
+                    await _promptForSudoPassword();
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isVpn ? Colors.amber.withOpacity(0.2) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.shield_outlined, size: 16, color: isVpn ? Colors.amber : Colors.grey),
+                      const SizedBox(width: 6),
+                      Text("VPN (Tun)", style: TextStyle(
+                          color: isVpn ? Colors.amber : Colors.grey,
+                          fontSize: 12,
+                          fontWeight: isVpn ? FontWeight.bold : FontWeight.normal
+                      )),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildSubscriptionBlockingWidget(AccountStatus status) {
     context.read<VpnProvider>().disconnect();
     return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // بلور کردن پس‌زمینه
+      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
       child: Container(
         width: double.infinity,
         height: double.infinity,
@@ -147,7 +302,7 @@ class _MainScreenState extends State<MainScreen>
         extendBody: true,
         extendBodyBehindAppBar: true,
         backgroundColor: Colors.transparent,
-        drawer: CustomRightDrawer(),
+        drawer: const CustomRightDrawer(),
         body: Container(
           width: size.width,
           height: size.height,
@@ -162,122 +317,125 @@ class _MainScreenState extends State<MainScreen>
           child: (!userLoading && !firstTimeOfflineError)
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
-                  onRefresh: () async {
-                    context.read<UserProvider>().initializeApp(context);
-                    context.read<ServerProvider>().initData();
-                    context.read<NotificationProvider>().initData();
-                  },
-                  child: Container(
-                    width: size.width,
-                    height: size.height,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage(Assets.imagesDarkBg),
-                        alignment: AlignmentGeometry.bottomCenter,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
+            onRefresh: () async {
+              context.read<UserProvider>().initializeApp(context);
+              context.read<ServerProvider>().initData();
+              context.read<NotificationProvider>().initData();
+            },
+            child: Container(
+              width: size.width,
+              height: size.height,
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(Assets.imagesDarkBg),
+                  alignment: Alignment.bottomCenter,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20, top: 10, right: 20), // Padding اصلاح شده
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 20, top: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  const AutoSizeText(
-                                    "پارسی",
-                                    maxFontSize: 40,
-                                    minFontSize: 30,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const Gap(5),
-                                  Image.asset(Assets.imagesParsilogowite),
-                                ],
+                        // هدر بالا
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            const AutoSizeText(
+                              "پارسی",
+                              maxFontSize: 40,
+                              minFontSize: 30,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const Gap(5),
-                              const VpnSpeedWidget(),
-                            ],
-                          ),
+                            ),
+                            const Gap(5),
+                            Image.asset(Assets.imagesParsilogowite),
+                          ],
                         ),
-                        Align(
-                            alignment: Alignment.bottomCenter,
-                            child: Image.asset(
-                              Assets.imagesImg2,
-                              fit: BoxFit.cover,
-                            )),
-                        _buildPowerBtn(),
-                        _buildSubInfoWidget(),
-                        const HomeScreen(),
-                        ShowPingWidget(),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 10, top: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  IconButton(
-                                    onPressed: () {
-                                      _scaffoldKey.currentState!.openDrawer();
-                                    },
-                                    icon: Icon(
-                                      Icons.menu,
-                                      size: 30,
-                                    ),
-                                  ),
-                                  Consumer<NotificationProvider>(
-                                    builder: (context, provider, child) {
-                                      return IconButton(
-                                        onPressed: () {
-                                          context
-                                              .to(const NotificationScreen());
-                                        },
-                                        icon: badge.Badge(
-                                          badgeContent: Text(
-                                              provider.unreadCount.toString()),
-                                          position:
-                                              badge.BadgePosition.topStart(),
-                                          child: CircleAvatar(
-                                            backgroundColor: Colors.white,
-                                            radius: 18,
-                                            child: Center(
-                                              child: Icon(
-                                                Icons.notifications_none,
-                                                size: 25,
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (showBlockingDialog)
-                          _buildSubscriptionBlockingWidget(accountStatus),
+                        const Gap(5),
+                        const VpnSpeedWidget(),
                       ],
                     ),
                   ),
-                ),
+                  Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Image.asset(
+                        Assets.imagesImg2,
+                        fit: BoxFit.cover,
+                      )),
+                  _buildPowerBtn(),
+                  _buildSubInfoWidget(),
+                  HomeScreen(widget:   _buildConnectionModeSwitch(),),
+                  ShowPingWidget(),
+                  // دکمه‌های منو و نوتیفیکیشن
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10, top: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            IconButton(
+                              onPressed: () {
+                                _scaffoldKey.currentState!.openDrawer();
+                              },
+                              icon: const Icon(
+                                Icons.menu,
+                                size: 30,
+                              ),
+                            ),
+                            Consumer<NotificationProvider>(
+                              builder: (context, provider, child) {
+                                return IconButton(
+                                  onPressed: () {
+                                    context
+                                        .to(const NotificationScreen());
+                                  },
+                                  icon: badge.Badge(
+                                    badgeContent: Text(
+                                        provider.unreadCount.toString()),
+                                    position:
+                                    badge.BadgePosition.topStart(),
+                                    child: const CircleAvatar(
+                                      backgroundColor: Colors.white,
+                                      radius: 18,
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.notifications_none,
+                                          size: 25,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (showBlockingDialog)
+                    _buildSubscriptionBlockingWidget(accountStatus),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
+  // ... (بقیه ویجت‌ها: _buildPowerBtn, _buildSubInfoWidget مثل قبل) ...
   Widget _buildPowerBtn() {
     return ValueListenableBuilder<VpnState>(
       valueListenable: vpnStateNotifier,
@@ -297,6 +455,7 @@ class _MainScreenState extends State<MainScreen>
   }
 
   Widget _buildSubInfoWidget() {
+    // (کد قبلی بدون تغییر)
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
         if (!userProvider.initialUserLoading || userProvider.subModel == null) {
@@ -323,9 +482,9 @@ class _MainScreenState extends State<MainScreen>
                     ),
                     const Gap(10),
                     AutoSizeText(
-                        (int.tryParse(userProvider.subModel!.traffic) ?? 0) >= 10000000000
-                            ? "نامحدود"
-                            : userProvider.calculateTraffic(),
+                      (int.tryParse(userProvider.subModel!.traffic) ?? 0) >= 10000000000
+                          ? "نامحدود"
+                          : userProvider.calculateTraffic(),
                       minFontSize: 8,
                       maxFontSize: 14,
                       style: const TextStyle(color: Colors.grey),
@@ -379,9 +538,10 @@ class _MainScreenState extends State<MainScreen>
   }
 }
 
+// ... (کلاس CustomRightDrawer و extension بدون تغییر) ...
 class CustomRightDrawer extends StatelessWidget {
   const CustomRightDrawer({super.key});
-
+  // ... (کد قبلی دراور)
   @override
   Widget build(BuildContext context) {
     // رنگ‌های استخراج شده از تصویر
@@ -458,7 +618,7 @@ class CustomRightDrawer extends StatelessWidget {
                               return Text(
                                 "ID: ${asyncSnapshot.data}",
                                 style:
-                                    TextStyle(color: Colors.grey, fontSize: 12),
+                                TextStyle(color: Colors.grey, fontSize: 12),
                               );
                             }),
                       ],
@@ -474,7 +634,7 @@ class CustomRightDrawer extends StatelessWidget {
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   decoration: BoxDecoration(
                     color: cardColor,
                     borderRadius: BorderRadius.circular(12),
@@ -506,7 +666,7 @@ class CustomRightDrawer extends StatelessWidget {
                       "ثبت کد اشتراک",
                       Icons.qr_code_scanner,
                       highlightColor,
-                      () {
+                          () {
                         Provider.of<UserProvider>(context, listen: false)
                             .subCode
                             .clear();
@@ -517,19 +677,19 @@ class CustomRightDrawer extends StatelessWidget {
                       "آموزش استفاده",
                       Icons.play_circle_outline,
                       highlightColor,
-                      () {
+                          () {
                         context.to(TrainingScreen());
                       },
                     ),
                     _buildMenuItem("خرید از طریق ربات",
                         Icons.shopping_cart_outlined, highlightColor, () {
-                      showCooperationDialog3(context);
-                    }, isBold: true, isAssets: true, assets: Assets.imagesV),
+                          showCooperationDialog3(context);
+                        }, isBold: true, isAssets: true, assets: Assets.imagesV),
                     _buildMenuItem(
                       "پنل همکاری",
                       Icons.storefront,
                       highlightColor,
-                      () {
+                          () {
                         showCooperationDialog(context);
                       },
                     ),
@@ -537,7 +697,7 @@ class CustomRightDrawer extends StatelessWidget {
                       "وبسایت پارسی",
                       Icons.language,
                       highlightColor,
-                      () {
+                          () {
                         launchUrl(Uri.parse("https://parsi1.sbs/"),
                             mode: LaunchMode.externalApplication);
                       },
@@ -546,7 +706,7 @@ class CustomRightDrawer extends StatelessWidget {
                       "لینک دعوت",
                       Icons.share,
                       highlightColor,
-                      () {
+                          () {
                         showCooperationDialog2(context);
                       },
                     ),
@@ -554,7 +714,7 @@ class CustomRightDrawer extends StatelessWidget {
                       "سوالات متداول",
                       Icons.help_outline,
                       highlightColor,
-                      () {
+                          () {
                         context.to(FAQScreen());
                       },
                     ),
@@ -562,7 +722,7 @@ class CustomRightDrawer extends StatelessWidget {
                       "تست سرعت",
                       Icons.headset_mic,
                       highlightColor,
-                      () {
+                          () {
                         context.to(SpeedTestScreen());
                       },
                     ),
@@ -570,7 +730,7 @@ class CustomRightDrawer extends StatelessWidget {
                       "پشتیبانی",
                       Icons.headset_mic,
                       highlightColor,
-                      () {
+                          () {
                         context.to(SupportScreen());
                       },
                     ),
@@ -606,10 +766,10 @@ class CustomRightDrawer extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         leading: isAssets
             ? Image.asset(
-                assets ?? "",
-                height: 16,
-                color: accentColor,
-              )
+          assets ?? "",
+          height: 16,
+          color: accentColor,
+        )
             : Icon(icon, color: accentColor),
         // آیکون سمت راست (چون RTL است)
         title: Text(
@@ -629,7 +789,6 @@ class CustomRightDrawer extends StatelessWidget {
   }
 }
 
-// اکستنشن برای فرمت قیمت (سه رقم سه رقم)
 extension on Object {
   String toPrice() {
     String numberString = toString();

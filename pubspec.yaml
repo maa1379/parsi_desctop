@@ -45,18 +45,19 @@ dependencies:
   async: ^2.13.0
   persian_number_utility: 1.1.6
   badges:
-  traffic_stats: ^0.0.2
+#  traffic_stats: ^0.0.2
   ffi: ^2.1.5
   path_provider: ^2.1.5
   path:
   device_info_plus:
+  window_manager: ^0.5.1
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^6.0.0
+  flutter_lints: ^5.0.0
 
 
 flutter:
@@ -77,3 +78,13 @@ icons_launcher:
     android:
       enable: true
       image_path: "assets/images/logo2.png"
+    macos:
+      enable: true
+      image_path: "assets/images/logo2.png"
+    windows:
+      enable: true
+      image_path: "assets/images/logo2.png"
+    linux:
+      enable: true
+      image_path: "assets/images/logo2.png"
+

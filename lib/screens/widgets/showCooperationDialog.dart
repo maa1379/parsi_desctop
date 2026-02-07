@@ -680,10 +680,8 @@ class _CooperationDialogContent4 extends StatelessWidget {
                               color: Colors.green,
                             ),
                           ),
-                          hint: const Text(
-                            "کد اشتراک",
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
-                          ),
+                          hintText: "کد اشتراک",
+                          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                         ),
                       ),
                     ),

@@ -17,8 +17,8 @@ import '../generated/assets.dart';
 import '../provider/v2ray_provider.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
+  const HomeScreen({super.key, required this.widget,});
+  final Widget widget;
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -32,11 +32,13 @@ class _HomeScreenState extends State<HomeScreen> {
       spacing: 10,
       children: [
         _buildTopImage(),
+        widget.widget,
         BuildConfigWidget().configWidget(size),
         _buildBuildChips(),
       ],
     );
   }
+
 
   Widget _buildBuildChips() {
     return Column(

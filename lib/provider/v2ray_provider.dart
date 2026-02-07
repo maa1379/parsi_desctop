@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io'; // اضافه شده برای چک کردن پلتفرم
 import 'package:flutter/material.dart';
 import 'package:flutter_v2ray_client_desktop/flutter_v2ray_client_desktop.dart' as desktop;
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
@@ -37,7 +38,6 @@ class VpnSpeedData {
 }
 
 class VpnProvider extends ChangeNotifier {
-  // کلاینت‌های هر دو پلتفرم
   late final desktop.FlutterV2rayClientDesktop _desktopV2ray;
 
   VpnConnectionState _state = VpnConnectionState.disconnected;
@@ -46,11 +46,18 @@ class VpnProvider extends ChangeNotifier {
   final _speedStreamController = StreamController<VpnSpeedData>.broadcast();
   Stream<VpnSpeedData> get speedStream => _speedStreamController.stream;
 
-  // وضعیت‌های هر دو پلتفرم
   desktop.V2rayStatus _v2rayStatusDesktop = const desktop.V2rayStatus();
 
   VpnState _vpnType = vpnStateNotifier.value;
   VpnState get vpnType => _vpnType;
+
+  // --- تغییرات جدید: متغیرهای نوع اتصال و پسورد ---
+  desktop.ConnectionType _connectionType = desktop.ConnectionType.systemProxy;
+  desktop.ConnectionType get connectionType => _connectionType;
+
+  String? _sudoPassword;
+  bool get hasSudoPassword => _sudoPassword != null && _sudoPassword!.isNotEmpty;
+  // ----------------------------------------------
 
   bool _isPinging = false;
   bool showPing = false;
@@ -60,9 +67,11 @@ class VpnProvider extends ChangeNotifier {
   AnimationController? animationController;
 
   VpnProvider() {
-      _desktopV2ray = desktop.FlutterV2rayClientDesktop(
-        statusListener: _onDesktopStatusChanged, logListener: (String log) {},
-      );
+    _desktopV2ray = desktop.FlutterV2rayClientDesktop(
+      statusListener: _onDesktopStatusChanged, logListener: (String log) {
+      debugPrint(log); // برای دیباگ بهتر
+    },
+    );
     _initialize();
   }
 
@@ -72,13 +81,28 @@ class VpnProvider extends ChangeNotifier {
       hasInterNet = (status == InternetStatus.connected);
       notifyListeners();
     });
+
+    // لود کردن تنظیمات پیش‌فرض (اختیاری)
+    // مثلا می‌توانید آخرین حالت انتخاب شده را از PrefHelpers بخوانید
   }
 
-  // مدیریت وضعیت دسکتاپ
+  // --- تغییرات جدید: متد تغییر حالت اتصال ---
+  void setConnectionType(desktop.ConnectionType type) {
+    _connectionType = type;
+    notifyListeners();
+  }
+
+  // --- تغییرات جدید: ذخیره پسورد ---
+  void setSudoPassword(String password) {
+    _sudoPassword = password;
+    notifyListeners();
+  }
+  // ---------------------------------------
+
   void _onDesktopStatusChanged(desktop.V2rayStatus status) {
     _v2rayStatusDesktop = status;
     final speedData = VpnSpeedData(
-      upload: !hasInterNet ? "0" : status.upload.toString(), // دسکتاپ بایت بر ثانیه می‌دهد
+      upload: !hasInterNet ? "0" : status.upload.toString(),
       download: !hasInterNet ? "0" : status.download.toString(),
       duration: _formatDurationDesktop(status.duration),
       downloadT: status.totalDownload.toString(),
@@ -102,28 +126,45 @@ class VpnProvider extends ChangeNotifier {
     if (_state != newState) {
       _updateState(newState);
       if (newState == VpnConnectionState.connected) {
-        await Future.delayed(Duration(seconds: 2));
+        await Future.delayed(const Duration(seconds: 2));
         updatePing();
       }
     }
   }
 
-  // لاجیک اتصال
+  // --- تغییرات جدید: متد اتصال آپدیت شده ---
   Future<void> connect() async {
     final conf = await PrefHelpers.getServerConfig();
     if (conf == null) return;
+
+    // بررسی نیاز به پسورد در مک و لینوکس برای حالت VPN
+    if (_connectionType == desktop.ConnectionType.vpn &&
+        (Platform.isMacOS || Platform.isLinux)) {
+      if (_sudoPassword == null || _sudoPassword!.isEmpty) {
+        // اگر پسورد ست نشده بود، ارور برمی‌گرداند یا لاگ می‌اندازد
+        // هندل کردن پرامپت باید در UI قبل از زدن دکمه اتصال انجام شده باشد
+        debugPrint("Error: Sudo password is required for VPN mode");
+        return;
+      }
+    }
+
+    try {
       await _desktopV2ray.startV2Ray(
         config: conf,
-        sudoPassword: "1379",
-        connectionType: desktop.ConnectionType.vpn,
+        // اگر سیستم پروکسی باشد، پسورد نال ارسال می‌شود که مشکلی ندارد
+        sudoPassword: _connectionType == desktop.ConnectionType.vpn ? _sudoPassword : null,
+        connectionType: _connectionType,
       );
+    } catch (e) {
+      debugPrint("Connection Error: $e");
+      _updateState(VpnConnectionState.disconnected);
+    }
   }
 
   Future<void> disconnect() async {
-      await _desktopV2ray.stopV2Ray();
+    await _desktopV2ray.stopV2Ray();
   }
 
-  // توابع کمکی
   String _formatDurationDesktop(Duration d) {
     final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
@@ -131,7 +172,6 @@ class VpnProvider extends ChangeNotifier {
     return hh > 0 ? '${hh.toString().padLeft(2, '0')}:$mm:$ss' : '00:$mm:$ss';
   }
 
-  // بقیه متدهای شما بدون تغییر در لاجیک
   void _updateState(VpnConnectionState newState) {
     if (_state == newState) return;
     _state = newState;
@@ -158,7 +198,7 @@ class VpnProvider extends ChangeNotifier {
     notifyListeners();
     try {
       int pingTime = 0;
-        pingTime = await _desktopV2ray.getServerDelay(url: await PrefHelpers.getServerConfigUri(),type: desktop.DelayType.tcp);
+      pingTime = await _desktopV2ray.getServerDelay(url: await PrefHelpers.getServerConfigUri(),type: desktop.DelayType.tcp);
       ping = pingTime <= 0 ? "عدم دریافت پینگ" : "$pingTime پینگ سرور: ";
     } catch (_) {
       ping = "خطا";
@@ -173,10 +213,8 @@ class VpnProvider extends ChangeNotifier {
     return await _desktopV2ray.getServerDelay(url: url);
   }
 
-
   int getCurrentTrafficUsage() => getCombinedTraffic(lastKnownData.downloadT, lastKnownData.uploadT);
 
-  // متد آپدیت ترافیک سرور (بدون تغییر لاجیک قبلی)
   Future<void> updateTrafficAccount(int traffic) async {
     try {
       final res = await ApiService().updateTrafficAccount(await PrefHelpers.getSubCode(), traffic);

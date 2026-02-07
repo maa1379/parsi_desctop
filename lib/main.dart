@@ -10,6 +10,7 @@ import 'package:parsi/provider/user_provider.dart';
 import 'package:parsi/provider/v2ray_provider.dart';
 import 'package:parsi/screens/splash_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
@@ -18,9 +19,29 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-
+  await windowManager.ensureInitialized();
   // final pref = await SharedPreferences.getInstance();
   // await pref.clear();
+
+  WindowOptions windowOptions = const WindowOptions(
+    size: Size(400, 900),
+    center: true, // باز شدن پنجره در وسط صفحه
+    backgroundColor: Colors.transparent,
+    skipTaskbar: false,title: "Parsi Vpn",
+    titleBarStyle: TitleBarStyle.normal,
+  );
+
+  // 5. اعمال تنظیمات و نمایش پنجره
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+
+    // --- نکته کلیدی اینجاست ---
+    await windowManager.setResizable(false);
+    await windowManager.setMinimumSize(const Size(400, 900));
+    await windowManager.setMaximumSize(const Size(400, 900));
+    // -------------------------
+  });
 
   runApp(
     MultiProvider(
@@ -64,9 +85,9 @@ class MyApp extends StatelessWidget {
           border: OutlineInputBorder(),
         ),
       ),
-      builder: (context, child) {
-        return SafeArea(child: child ?? SizedBox());
-      },
+      // builder: (context, child) {
+      //   // return SafeArea(child: child ?? SizedBox());
+      // },
       debugShowCheckedModeBanner: false,
       home: const SplashScreen(),
     );

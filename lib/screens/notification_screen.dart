@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:persian_number_utility/persian_number_utility.dart';
 import 'package:provider/provider.dart';
 import 'package:parsi/core/utils.dart'; // فرض بر این است که neuShape و neuShadow اینجا هستند
 
@@ -293,7 +294,7 @@ class _NotificationScreenState extends State<NotificationScreen>
             Align(
               alignment: Alignment.bottomLeft,
               child: Text(
-                item.createdAt.toString().split('.')[0], // نمایش ساده تاریخ
+                item.createdAt.toPersianDate(showTime: true,twoDigits: true,changeDirectionShowTimw: false),
                 style: const TextStyle(color: Colors.grey, fontSize: 10),
               ),
             )

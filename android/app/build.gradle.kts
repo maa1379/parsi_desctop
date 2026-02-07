@@ -40,7 +40,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.parsi.parsi"
+        applicationId = "com.parsi.parsivpn"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

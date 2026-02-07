@@ -13,10 +13,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # --- بخش ستاپ SSH (اگر ریپوی پرایوت دارید) ---
+      # - name: Setup SSH Agent
+      #   uses: webfactory/ssh-agent@v0.9.0
+      #   with:
+      #     ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      # ---------------------------------------------
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          flutter-version: '3.29.0'
+          channel: 'stable'
+          architecture: x64
           cache: true
 
       - name: Enable Windows desktop
@@ -28,14 +37,18 @@ jobs:
       - name: Build Windows (Release)
         run: flutter build windows --release
 
-      - name: Zip Windows build
-        run: |
-          powershell Compress-Archive `
-            build/windows/runner/Release `
-            flutter-windows-vpn.zip
+      # --- مرحله جدید: نصب و اجرای Inno Setup ---
+      - name: Setup Inno Setup
+        uses: Minionguyjosh/setup-inno-setup@v1
+        with:
+          version: "6.2.1"
 
-      - name: Upload artifact
+      - name: Compile Installer
+        run: iscc installer.iss
+      # ----------------------------------------
+
+      - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flutter-windows-vpn
-          path: flutter-windows-vpn.zip
+          name: ParsiVPN-Installer
+          path: ParsiVPN_Setup.exe

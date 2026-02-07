@@ -34,13 +34,8 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget splashUi() {
     return Scaffold(
       body: SizedBox(
-        // alignment: Alignment.center,
         height: size.height,
         width: size.width,
-        // decoration: const BoxDecoration(
-        //     color: Colors.black,
-        //     image: DecorationImage(
-        //         image: AssetImage(Assets.imagesBack), fit: BoxFit.cover)),
         child: Stack(
           children: [
             Positioned.fill(

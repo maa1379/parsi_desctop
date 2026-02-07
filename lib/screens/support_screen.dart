@@ -146,7 +146,6 @@ class SupportScreen extends StatelessWidget {
                         Gap(15),
                         Divider(
                           color: Colors.blueAccent.withOpacity(0.5),
-                          radius: BorderRadius.circular(50),
                           indent: 80,
                           endIndent: 80,
                         ),
@@ -171,7 +170,6 @@ class SupportScreen extends StatelessWidget {
                         Gap(15),
                         Divider(
                           color: Colors.blueAccent.withOpacity(0.5),
-                          radius: BorderRadius.circular(50),
                           indent: 80,
                           endIndent: 80,
                         ),

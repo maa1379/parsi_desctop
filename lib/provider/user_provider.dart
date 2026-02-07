@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:app_links/app_links.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:mobile_device_identifier/mobile_device_identifier.dart';
 import 'package:parsi/core/nav_helper.dart';
 import 'package:parsi/core/number_formatters.dart';
 import 'package:parsi/provider/v2ray_provider.dart';
@@ -31,10 +32,10 @@ enum AccountStatus {
 class UserProvider extends ChangeNotifier {
   final ApiService api = ApiService();
   final AppLinks _appLinks = AppLinks();
-
+  StreamSubscription? _linkSubscription;
   List<String> availableDurations = []; // لیست دسته‌ها (مثلا: 1، 2، 3)
   String selectedDurationTab = "";
-
+  String? _lastProcessedLink;
   // --- وضعیت‌های Loading ---
   bool initialUserLoading = false;
   bool paymentPeriodsLoading = false;
@@ -89,6 +90,7 @@ class UserProvider extends ChangeNotifier {
     PriceModel(price: 500000, selected: false),
     PriceModel(price: 1000000, selected: false),
   ];
+
 
   // --- متد Init جامع (تغییر یافته) ---
   Future initializeApp(BuildContext context) async {
@@ -215,7 +217,6 @@ class UserProvider extends ChangeNotifier {
   Future<void> getActiveSubAccount({bool isBackgroundCheck = false}) async {
     final res = await api.getActiveAccount(
         await PrefHelpers.getSubCode(), await PrefHelpers.getDeviceId());
-
     if (res.statusCode == 200) {
       if (res.data['data']['sub'] != null) {
         final fetchedSub = Sub.fromJson(res.data['data']['sub']);
@@ -317,6 +318,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> _setDeviceInfo() async {
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
     String fcmToken = "";
     try {
       fcmToken = "";
@@ -324,11 +326,23 @@ class UserProvider extends ChangeNotifier {
       fcmToken = "";
     }
     if (await PrefHelpers.getDeviceId() == null) {
-      String? udid = "56456465";
+      String? udid;
+      if(Platform.isWindows){
+        WindowsDeviceInfo windowsInfo = await deviceInfo.windowsInfo;
+        udid = windowsInfo.deviceId;
+      }
+      if(Platform.isLinux){
+        LinuxDeviceInfo windowsInfo = await deviceInfo.linuxInfo;
+        udid = windowsInfo.machineId;
+      }
+      if(Platform.isMacOS){
+        MacOsDeviceInfo macInfo = await deviceInfo.macOsInfo;
+        udid = macInfo.systemGUID;
+      }
       await PrefHelpers.setDeviceId(udid ?? "");
     }
     final res =
-        await api.setUserDeviceInfo(await PrefHelpers.getDeviceId(), fcmToken);
+    await api.setUserDeviceInfo(await PrefHelpers.getDeviceId(), fcmToken);
     if (res.statusCode == 200) {
       if (res.data['data']['sub_code'] != null) {
         await PrefHelpers.setSubCode(res.data['data']['sub_code']);
@@ -443,10 +457,10 @@ class UserProvider extends ChangeNotifier {
       if (res.statusCode == 200) {
         periodList = p.PeriodModel.fromJson(res.data['data']);
         periodList?.period.removeWhere(
-          (element) => element.isFree == true,
+              (element) => element.isFree == true,
         );
         periodList?.period.removeWhere(
-          (element) => element.visible == false,
+              (element) => element.visible == false,
         );
         await p.PeriodModel.saveToDB(periodList!.period);
 
@@ -835,18 +849,45 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ===================================================================
+  // --- بخش FcmController ---
+  // ===================================================================
+
+  // Future<void> _initFCM() async {
+  //   await _fcm.requestPermission(
+  //     alert: false,
+  //     announcement: false,
+  //     badge: true,
+  //     carPlay: false,
+  //     criticalAlert: false,
+  //     provisional: false,
+  //     sound: false,
+  //   );
+  // }
 
   // ===================================================================
   // --- بخش DeepLink (ادغام شده) ---
   // ===================================================================
 
   void _initDeepLinks(BuildContext context) {
-    _appLinks.uriLinkStream.listen(
-      (uri) {
+    // 3. اگر لیسنر قبلی وجود دارد، آن را کنسل کن تا دوتا نشود
+    _linkSubscription?.cancel();
+
+    _linkSubscription = _appLinks.uriLinkStream.listen(
+          (uri) {
+        if (uri.toString() == _lastProcessedLink) return;
+
+        _lastProcessedLink = uri.toString();
+
+        Future.delayed(const Duration(seconds: 3), () {
+          _lastProcessedLink = null;
+        });
+
         debugPrint("DeepLink Received: $uri");
         final status = uri.queryParameters['status'];
 
         if (status == "500") {
+          // هندل کردن خطا
         } else if (status == "100") {
           // رفرش همه‌چیز
           getAllSubPeriod();
@@ -855,22 +896,45 @@ class UserProvider extends ChangeNotifier {
           getAccountInfo();
 
           if (uri.queryParameters['for_others'] == "true") {
+            // لاژیک مربوطه
           } else if (uri.path.contains("wallets")) {
             getWallet();
+            _showDialogSafe(context, "کیف پول با موفقیت شارژ شد");
+
           } else {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              final subCode = uri.queryParameters['subCode'];
-              if (subCode != null && subCode.isNotEmpty) {
-                checkSubNumber(subCode, false, context);
+              final subCodeParam = uri.queryParameters['subCode'];
+              if (subCodeParam != null && subCodeParam.isNotEmpty) {
+                checkSubNumber(subCodeParam, false, context);
               } else {
                 _getUserInfo();
               }
             });
           }
+        } else {
+          _showDialogSafe(context, "پرداخت ناموفق بود یا لغو شد");
         }
+      },
+      onError: (err) {
+        debugPrint("DeepLink Error: $err");
       },
     );
   }
+  void disposed() {
+    _linkSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _showDialogSafe(BuildContext context, String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        ViewHelper.showSuccessDialog(message, context);
+      } catch(e) {
+        print("Context error: $e");
+      }
+    });
+  }
+
 
   void disconnectOthers(String subCode, BuildContext context) async {
     // بررسی اینترنت

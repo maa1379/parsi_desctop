@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:parsi/core/number_formatters.dart';
 import 'package:provider/provider.dart';
-import 'package:traffic_stats/traffic_stats.dart';
 
 import '../../generated/assets.dart';
 import '../../provider/v2ray_provider.dart';
@@ -54,15 +53,16 @@ class VpnSpeedWidget extends StatelessWidget {
               Assets.imagesMoveDown,
             ),
           ],
-        ):StreamBuilder<VpnSpeedData>(
+        ):
+        StreamBuilder<VpnSpeedData>(
           stream: vpnProvider.speedStream,
           builder: (context, snapshot) {
-            final speedData = snapshot.data!;
+            final speedData = snapshot.data;
             return Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 AutoSizeText(
-                  "${speedData.upload} Kb/s",
+                  (int.parse(speedData?.upload ?? "0")).speed().replaceAll("i", ""),
                   minFontSize: 12,
                   maxFontSize: 20,
                   textDirection: TextDirection.ltr,
@@ -73,7 +73,7 @@ class VpnSpeedWidget extends StatelessWidget {
                 ),
                 const Gap(10),
                 AutoSizeText(
-                  "${speedData.download} Kb/s",
+                  (int.parse(speedData?.download ?? "0")).speed().replaceAll("i", ""),
                   textDirection: TextDirection.ltr,
                   minFontSize: 12,
                   maxFontSize: 20,
@@ -91,12 +91,12 @@ class VpnSpeedWidget extends StatelessWidget {
           stream: vpnProvider.speedStream,
           initialData: VpnSpeedData.zero(),
           builder: (context, snapshot) {
-            final speedData = snapshot.data!;
+            final speedData = snapshot.data;
             return Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 AutoSizeText(
-                  speedData.duration,
+                  speedData?.duration ?? "",
                   minFontSize: 16,
                   maxFontSize: 24,
                   style: const TextStyle(color: Colors.white),
