@@ -39,7 +39,7 @@ jobs:
 
       # --- مرحله جدید: نصب و اجرای Inno Setup ---
       - name: Setup Inno Setup
-        uses: Minionguyjosh/setup-inno-setup@v1
+        uses: MinionguyJoss/setup-inno-setup@v1
         with:
           version: "6.2.1"
 
