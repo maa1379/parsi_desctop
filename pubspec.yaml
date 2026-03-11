@@ -38,7 +38,8 @@ dependencies:
   mobile_device_identifier:
   flutter_v2ray_client_desktop:
     git:
-      url: https://github.com/maa1379/parsiWin.git
+      url: https://github.com/maa1379/desktopVpnSrc.git
+      ref: main
   webview_flutter:
   internet_connection_checker_plus:
   video_player:
