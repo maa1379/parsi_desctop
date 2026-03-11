@@ -50,7 +50,7 @@ class Last {
 
   factory Last.fromJson(Map<String, dynamic> json) => Last(
     id: json["_id"],
-    popUpPath: json["popUp_path"],
+    popUpPath: "https://app.parsiweb.net/uploads/"+json["popUp_path"],
     createdAt: DateTime.parse(json["createdAt"]),
     updatedAt: DateTime.parse(json["updatedAt"]),
     v: json["__v"],

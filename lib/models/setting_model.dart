@@ -45,6 +45,7 @@ class Last {
   String telegramSupportLink;
   String onlineSupportLink;
   String siteLink;
+  String hamkarLink;
   String instagramLink;
   DateTime createdAt;
   DateTime updatedAt;
@@ -58,6 +59,7 @@ class Last {
     required this.freeTraffic,
     required this.aboutServers,
     required this.whatsAppLink,
+    required this.hamkarLink,
     required this.freeSubNumber,
     required this.siteLink,
     required this.telegramGroupLink,
@@ -80,6 +82,7 @@ class Last {
         siteLink: json["site_link"] ?? "",
         freeTraffic: json["free_traffic"],
         aboutServers: json["about_servers"],
+    hamkarLink: json["hamkarLink"] ?? "",
         freeSubNumber: json["free_sub_number"],
         telegramGroupLink: json["telegram_group_link"] ?? "",
         telegramSupportLink: json["telegram_support_link"] ?? "",
@@ -101,6 +104,7 @@ class Last {
         "free_sub_day": freeSubDay,
         "free_traffic": freeTraffic,
         "site_link": siteLink,
+        "hamkarLink": hamkarLink,
         "free_sub_number": freeSubNumber,
         "about_servers": aboutServers,
         "telegram_group_link": telegramGroupLink,

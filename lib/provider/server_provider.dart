@@ -1,12 +1,12 @@
-import 'dart:io';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_v2ray_client_desktop/flutter_v2ray_client_desktop.dart'
+    as desktop;
 import 'package:parsi/provider/check_internet_connection.dart';
 import 'package:parsi/provider/vpn_changer_state_service.dart';
+
 import '../core/PrefHelper/PrefHelpers.dart';
 import '../core/network/api_service.dart';
 import '../models/configs_model.dart';
-
-import 'package:flutter_v2ray_client_desktop/flutter_v2ray_client_desktop.dart' as desktop;
 
 class ServerProvider extends ChangeNotifier {
   final ApiService api = ApiService();
@@ -16,9 +16,9 @@ class ServerProvider extends ChangeNotifier {
 
   // تابع کمکی برای پارس کردن لینک بر اساس پلتفرم
   Future<String> _getParsedConfig(String link) async {
-        final parser = desktop.V2rayParser();
-      await parser.parse(link);
-      return parser.json();
+    final parser = desktop.V2rayParser();
+    await parser.parse(link);
+    return parser.json();
   }
 
   void getAllConfigs() async {
@@ -30,10 +30,14 @@ class ServerProvider extends ChangeNotifier {
 
         if (await PrefHelpers.getServerConfig() == null) {
           // استفاده از تابع پارسر جدید
-          String fullConfig = await _getParsedConfig(configsList.config[0].configLink);
+          String fullConfig = await _getParsedConfig(
+            configsList.config[0].configLink,
+          );
 
           await PrefHelpers.setServerConfig(fullConfig);
-          await PrefHelpers.setServerConfigUri(configsList.config[0].configLink);
+          await PrefHelpers.setServerConfigUri(
+            configsList.config[0].configLink,
+          );
           await PrefHelpers.setActiveServer(configsList.config[0].serverName);
           await PrefHelpers.setServerFlag(configsList.config[0].serverFlagPath);
           await PrefHelpers.setServerAddress(configsList.config[0].serverIp);
@@ -57,11 +61,11 @@ class ServerProvider extends ChangeNotifier {
   }
 
   void parseServerConfig(
-      String link,
-      String serverName,
-      String serverFlagPath,
-      String serverIp,
-      ) async {
+    String link,
+    String serverName,
+    String serverFlagPath,
+    String serverIp,
+  ) async {
     // بروزرسانی پارس کانفیگ در اینجا
     String fullConfig = await _getParsedConfig(link);
 
@@ -75,12 +79,12 @@ class ServerProvider extends ChangeNotifier {
 
   // متد WireGuard بدون تغییر باقی می‌ماند چون پارسر مجزا ندارد
   void parseWireGuardServerConfig(
-      String link,
-      String serverName,
-      String serverFlagPath,
-      String serverIp,
-      String serverEndPoint,
-      ) async {
+    String link,
+    String serverName,
+    String serverFlagPath,
+    String serverIp,
+    String serverEndPoint,
+  ) async {
     await PrefHelpers.setServerConfig(link);
     await PrefHelpers.setServerConfigUri(link);
     await PrefHelpers.setActiveServer(serverName);

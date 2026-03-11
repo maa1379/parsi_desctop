@@ -264,10 +264,10 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
-  Widget _buildSubscriptionBlockingWidget(AccountStatus status) {
+  Widget _buildSubscriptionBlockingWidget() {
     context.read<VpnProvider>().disconnect();
     return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // بلور کردن پس‌زمینه
       child: Container(
         width: double.infinity,
         height: double.infinity,
@@ -278,22 +278,83 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  Widget _buildSubscriptionBlockingWidget2() {
+    context.read<VpnProvider>().disconnect();
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.black.withOpacity(0.7),
+        alignment: Alignment.center,
+        child: CooperationDialogContent8(),
+      ),
+    );
+  }
+
+  Widget _buildNotSubCodeWidget4() {
+    context.read<VpnProvider>().disconnect();
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.black.withOpacity(0.7),
+        alignment: Alignment.center,
+        child: CooperationDialogContent9(),
+      ),
+    );
+  }
+
+  Widget _buildTrafficEndBlockingWidget() {
+    context.read<VpnProvider>().disconnect();
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.black.withOpacity(0.7),
+        alignment: Alignment.center,
+        child: CooperationDialogContent10(), // <--- ویجت اتمام حجم خود را اینجا جایگزین کنید
+      ),
+    );
+  }
+
+  Widget _buildEndFreeSubWidget() {
+    context.read<VpnProvider>().disconnect();
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.black.withOpacity(0.7),
+        alignment: Alignment.center,
+        child: CooperationDialogContent11(), // <--- ویجت اتمام حجم خود را اینجا جایگزین کنید
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
     final userLoading = userProvider.initialUserLoading;
     final accountStatus = userProvider.accountStatus;
 
-    final bool firstTimeOfflineError = userProvider.firstTimeOfflineError ||
-        context.watch<ServerProvider>().firstTimeOfflineError ||
-        context.watch<SplashProvider>().firstTimeOfflineError ||
-        context.watch<NotificationProvider>().firstTimeOfflineError;
+    final bool firstTimeOfflineError =
+        userProvider.firstTimeOfflineError ||
+            context.watch<ServerProvider>().firstTimeOfflineError ||
+            context.watch<SplashProvider>().firstTimeOfflineError ||
+            context.watch<NotificationProvider>().firstTimeOfflineError;
 
-    final bool showBlockingDialog = userLoading &&
-        !firstTimeOfflineError &&
-        (accountStatus == AccountStatus.isTrafficEndOrIsExpired ||
-            (accountStatus == AccountStatus.none &&
-                userProvider.errorMessage == null));
+    final bool showExpiredDialog = userLoading && !firstTimeOfflineError &&
+        (accountStatus == AccountStatus.isExpired ||
+            (accountStatus == AccountStatus.none && userProvider.errorMessage == null));
+
+    final bool showTrafficEndDialog = userLoading && !firstTimeOfflineError &&
+        accountStatus == AccountStatus.isTrafficEnd;
+
+
+    final bool showFreeEnd = userProvider.subModel?.period.isFree == true && (userProvider.subModel?.isExpired == true || userProvider.subModel?.trafficEnd == true);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -424,8 +485,16 @@ class _MainScreenState extends State<MainScreen>
                       ],
                     ),
                   ),
-                  if (showBlockingDialog)
-                    _buildSubscriptionBlockingWidget(accountStatus),
+                  if(showFreeEnd)
+                    _buildEndFreeSubWidget(),
+                  if (userProvider.subModel?.period.isFree == false && showExpiredDialog)
+                    _buildSubscriptionBlockingWidget(), // دیالوگ منقضی شدن زمان
+                  if (userProvider.subModel?.period.isFree == false && showTrafficEndDialog)
+                    _buildTrafficEndBlockingWidget(), // دیالوگ جدید اتمام حجم
+                  if (userProvider.kicked)
+                    _buildSubscriptionBlockingWidget2(),
+                  if (userProvider.isAzad)
+                    _buildNotSubCodeWidget4(),
                 ],
               ),
             ),

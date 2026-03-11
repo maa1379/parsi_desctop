@@ -42,6 +42,54 @@ class ApiService {
     return response;
   }
 
+  Future<ApiResult> releaseSubscription(String subCode,String userId) async {
+    final response = await ApiHelper.makePostRequest(
+      path: "accounts/releaseSubscription/",
+      body: {
+        "subCode": subCode,
+        "userId": userId,
+      },
+      header: {
+        "authorization": "bearer ${await PrefHelpers.getToken()}",
+        'Content-type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+    print(response.data);
+    print(response.data);
+    print(response.data);
+    print(response.data);
+    print(response.data);
+    print(response.statusCode);
+    print(response.statusCode);
+    print(response.statusCode);
+    print(response.statusCode);
+    print(response.statusCode);
+    print(response.statusCode);
+    return response;
+  }
+
+  Future<ApiResult> setDefaultSubscription(String subCode,String userId) async {
+    final response = await ApiHelper.makePostRequest(
+      path: "accounts/setDefaultSubscription/",
+      body: {
+        "subCode": subCode,
+        "userId": userId,
+      },
+      header: {
+        "authorization": "bearer ${await PrefHelpers.getToken()}",
+        'Content-type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+    print("accounts/setDefaultSubscription/");
+    print({
+      "subCode": subCode,
+      "userId": userId,
+    });
+    return response;
+  }
+
 
 
 
@@ -113,16 +161,6 @@ class ApiService {
         'Accept': 'application/json',
       },
     );
-    print(response.data);
-    print(response.data);
-    print(response.data);
-    print(response.data);
-    print(response.data);
-    print(response.data);
-    print(response.statusCode);
-    print(response.statusCode);
-    print(response.statusCode);
-    print(response.statusCode);
     return response;
   }
 
@@ -193,7 +231,7 @@ class ApiService {
   }
 
 
-  Future<ApiResult> accountRenewalWithWallet(String subCode,String offerCode,String periodId) async {
+  Future<ApiResult> accountRenewalWithWallet(String subCode,String offerCode) async {
     final response = await ApiHelper.makePostRequest(
       path: "accounts/accountRenewalWithWallet/",
       header: {
@@ -204,7 +242,6 @@ class ApiService {
       body: {
         "subCode": subCode,
         "offer_code": offerCode,
-        "periodId": periodId,
         "userId": await PrefHelpers.getUserId(),
       },
     );
@@ -308,16 +345,19 @@ class ApiService {
     final response = await ApiHelper.makePostRequest(
       path: "wallets/chargeWallet/",
       header: {
-        "authorization": "bearer ${await PrefHelpers.getToken()}",
+        // "authorization": "bearer ${await PrefHelpers.getToken()}",
         'Content-type': 'application/json',
         'Accept': 'application/json',
       },
       body: {
         "status": status,
-        "amount": amount,
+        "amount": amount.replaceAll(",", ""),
         "walletId": walletId,
       },
     );
+    print("bearer ${await PrefHelpers.getToken()}");
+    print(response.data);
+    print(response.statusCode);
     return response;
   }
 

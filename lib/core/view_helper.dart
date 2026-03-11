@@ -56,6 +56,33 @@ class ViewHelper {
     ).show(navigatorKey.currentState!.context);
   }
 
+  static void showWarningDialog(String text, BuildContext context) {
+    Flushbar(
+      borderRadius: 10.0,
+      backgroundColor: Colors.white,
+      borderColor: Colors.blue,
+      margin: const EdgeInsets.symmetric(
+        horizontal: 20.0,
+        vertical: 150.0,
+      ),
+      animationDuration: const Duration(milliseconds: 500),
+      messageText: Text(
+        text,
+        maxLines: 1,
+        style: const TextStyle(
+          color: Colors.blue,
+        ),
+      ),
+      flushbarPosition: FlushbarPosition.BOTTOM,
+      icon: const Icon(
+        Icons.error_outline,
+        size: 28.0,
+        color: Colors.blue,
+      ),
+      duration: const Duration(seconds: 3),
+    ).show(navigatorKey.currentState!.context);
+  }
+
   static void showSuccessDialog(String text, BuildContext context) {
     Flushbar(
       borderRadius: 10.0,

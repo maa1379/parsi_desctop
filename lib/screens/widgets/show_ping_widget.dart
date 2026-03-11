@@ -23,96 +23,102 @@ class ShowPingWidget extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 30, left: 30),
       child: Align(
         alignment: Alignment.bottomCenter,
-        child: Consumer<VpnProvider>(builder: (context, vpnProvider, child) {
-          final bool isConnected =
-              vpnProvider.state == VpnConnectionState.connected;
+        child: Consumer<VpnProvider>(
+          builder: (context, vpnProvider, child) {
+            final bool isConnected =
+                vpnProvider.state == VpnConnectionState.connected;
 
-          if (!isConnected) {
+            if (!isConnected) {
+              return GestureDetector(
+                onTap: () async {
+                  // لاجیک اتصال یا تلاش مجدد در صورت نیاز
+                },
+                child: SizedBox(
+                  width: size.width,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const AutoSizeText(
+                        "متصل نیست",
+                        minFontSize: 10,
+                        textAlign: TextAlign.end,
+                        maxFontSize: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            final RegExp pingRegex = RegExp(r'\d+');
+            final String pingText = vpnProvider.ping;
+
+            final Match? match = pingRegex.firstMatch(pingText);
+            final String? pingNumber = match?.group(0);
+            // --- بخش اصلی تغییر کرده ---
             return GestureDetector(
               onTap: () async {
-                // لاجیک اتصال یا تلاش مجدد در صورت نیاز
+                if (isConnected && !vpnProvider.showPing) {
+                  await vpnProvider.updatePing();
+                }
               },
               child: SizedBox(
                 width: size.width,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    const Gap(80),
                     const AutoSizeText(
-                      "متصل نیست",
-                      minFontSize: 10,
-                      textAlign: TextAlign.end,
-                      maxFontSize: 18,
+                      "متصل شد.  ",
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(color: Colors.white, fontSize: 14),
                     ),
+
+                    // شرط نمایش لودینگ یا مقدار پینگ
+                    if (vpnProvider.showPing)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8.0),
+                        child: SizedBox(
+                          width: 15,
+                          height: 15,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white, // رنگ لودینگ
+                          ),
+                        ),
+                      )
+                    else
+                      Row(
+                        children: [
+                          Text(
+                            pingText.replaceFirst(pingNumber ?? '', ''),
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          Visibility(
+                            visible: pingNumber != null,
+                            child: Text(
+                              pingNumber == "0" ? "" : " ms  ",
+                              style: TextStyle(color: Colors.green),
+                            ),
+                          ),
+                          Visibility(
+                            visible: pingNumber != null,
+                            child: Text(
+                              pingNumber == "0" ? "" : "$pingNumber",
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
             );
-          }
-
-          final RegExp pingRegex = RegExp(r'\d+');
-          final String pingText = vpnProvider.ping;
-
-          final Match? match = pingRegex.firstMatch(pingText);
-          final String? pingNumber = match?.group(0);
-          // --- بخش اصلی تغییر کرده ---
-          return GestureDetector(
-            onTap: () async {
-              if (isConnected && !vpnProvider.showPing) {
-                await vpnProvider.updatePing();
-              }
-            },
-            child: SizedBox(
-              width: size.width,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Gap(80),
-                  const AutoSizeText(
-                    "متصل شد.  ",
-                    textDirection: TextDirection.rtl,
-                    style: TextStyle(color: Colors.white, fontSize: 14),
-                  ),
-
-                  // شرط نمایش لودینگ یا مقدار پینگ
-                  if (vpnProvider.showPing)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8.0),
-                      child: SizedBox(
-                        width: 15,
-                        height: 15,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white, // رنگ لودینگ
-                        ),
-                      ),
-                    )
-                  else
-                    Row(
-                      children: [
-                        Text(
-                          pingText.replaceFirst(pingNumber ?? '', ''),
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        Visibility(
-                          visible: pingNumber != null,
-                          child: Text(
-                            pingNumber == "0" ? "" : " ms  ",
-                            style: TextStyle(color: Colors.green),
-                          ),
-                        ),
-                        Visibility(
-                          visible: pingNumber != null,
-                          child: Text(
-                            pingNumber == "0" ? "" : "$pingNumber",
-                            style: TextStyle(color: Colors.green, fontSize: 15),
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          );
-        }),
+          },
+        ),
       ),
     );
   }

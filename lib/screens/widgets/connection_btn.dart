@@ -175,7 +175,7 @@ class _PowerBtnWidgetState extends State<PowerBtnWidget>
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Center(
                     child: Text(
-                      accountStatus == AccountStatus.isTrafficEndOrIsExpired
+                      accountStatus == AccountStatus.isExpired || accountStatus == AccountStatus.isTrafficEnd
                           ? "اعتبار زمانی یا حجمی شما به پایان رسیده است."
                           : (accountStatus == AccountStatus.none)
                           ? "شما اشتراک فعالی ندارید."
@@ -193,8 +193,7 @@ class _PowerBtnWidgetState extends State<PowerBtnWidget>
                 GestureDetector(
                   onTap: () {
                     Navigator.of(context, rootNavigator: true).pop();
-                    if (accountStatus ==
-                        AccountStatus.isTrafficEndOrIsExpired) {
+                    if (accountStatus == AccountStatus.isTrafficEnd || accountStatus == AccountStatus.isTrafficEnd) {
                       context.to(const PaymentScreen());
                       // context.to(const ProfileScreen());
                     } else {
@@ -211,7 +210,7 @@ class _PowerBtnWidgetState extends State<PowerBtnWidget>
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          accountStatus == AccountStatus.isTrafficEndOrIsExpired
+                          accountStatus == AccountStatus.isTrafficEnd || accountStatus == AccountStatus.isTrafficEnd
                               ? "خرید اشتراک"
                               : "خرید اشتراک",
                           style: const TextStyle(

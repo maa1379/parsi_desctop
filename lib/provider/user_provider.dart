@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:app_links/app_links.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_device_identifier/mobile_device_identifier.dart';
 import 'package:parsi/core/nav_helper.dart';
 import 'package:parsi/core/number_formatters.dart';
 import 'package:parsi/provider/v2ray_provider.dart';
@@ -24,9 +23,10 @@ import 'check_internet_connection.dart';
 
 enum AccountStatus {
   none,
-  isConnect, // اشتراک دارد و فعال است
-  isTrafficEndOrIsExpired, // ترافیک تمام شده یا منقضی شده
-  error, // خطایی رخ داده
+  isConnect,
+  isTrafficEnd, // اضافه شد: ترافیک تمام شده
+  isExpired,    // اضافه شد: زمان منقضی شده
+  error,
 }
 
 class UserProvider extends ChangeNotifier {
@@ -41,6 +41,10 @@ class UserProvider extends ChangeNotifier {
   bool paymentPeriodsLoading = false;
   bool walletLoading = false;
   bool accountInfoLoading = false;
+  bool kicked = false;
+  bool notSubCode = false;
+  // +++ New Flag for Voluntary Release +++
+  bool isAzad = false;
 
   // --- New Flag ---
   bool firstTimeOfflineError = false;
@@ -91,6 +95,11 @@ class UserProvider extends ChangeNotifier {
     PriceModel(price: 1000000, selected: false),
   ];
 
+  // --- FcmController ---
+  // final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+
+  // +++ Variable to store kick message +++
+  String kickedMessage = "";
 
   // --- متد Init جامع (تغییر یافته) ---
   Future initializeApp(BuildContext context) async {
@@ -99,7 +108,7 @@ class UserProvider extends ChangeNotifier {
     // ۱. بارگذاری داده‌های کش
     subModel = await Sub.getDB();
     periodList = await p.PeriodModel.getDB();
-    accountInfoModel = await AccountInfoModel.getDB();
+    // accountInfoModel = await AccountInfoModel.getDB();
 
     // اگر کش موجود بود، سریعا لودینگ را فالس کن تا کاربر معطل نشود (Optimistic UI)
     if (subModel != null) {
@@ -130,6 +139,17 @@ class UserProvider extends ChangeNotifier {
         getAccountInfo(),
       ]);
 
+      try{
+        await _initFCM().timeout(Duration(seconds: 2));
+      }catch(e){}
+
+      if(await PrefHelpers.getSubCode() == "" || await PrefHelpers.getSubCode() == null){
+        notSubCode = true;
+        notifyListeners();
+      }else{
+        notSubCode = false;
+      }
+
       await getActiveSubAccount(isBackgroundCheck: false);
       try {} catch (e) {
         debugPrint("Error in initializeApp: $e");
@@ -148,7 +168,7 @@ class UserProvider extends ChangeNotifier {
     // ۱. بارگذاری داده‌های کش
     subModel = await Sub.getDB();
     periodList = await p.PeriodModel.getDB();
-    accountInfoModel = await AccountInfoModel.getDB();
+    // accountInfoModel = await AccountInfoModel.getDB();
 
     // اگر کش موجود بود، سریعا لودینگ را فالس کن تا کاربر معطل نشود (Optimistic UI)
     if (subModel != null) {
@@ -179,6 +199,13 @@ class UserProvider extends ChangeNotifier {
           getAccountInfo(), // _initFCM(),
         ]);
 
+        if(await PrefHelpers.getSubCode() == "" || await PrefHelpers.getSubCode() == null){
+          notSubCode = true;
+          notifyListeners();
+        }else{
+          notSubCode = false;
+        }
+
         await getActiveSubAccount(isBackgroundCheck: false);
       } catch (e) {
         debugPrint("Error in initializeApp: $e");
@@ -195,11 +222,12 @@ class UserProvider extends ChangeNotifier {
     if (subModel == null) {
       accountStatus = AccountStatus.none;
     } else {
-      // اینجا چک می‌کنیم اگر قبلاً ذخیره شده که ترافیک تمام شده، وضعیت را قرمز کند
-      if (subModel!.isExpired == false && subModel!.trafficEnd == false) {
-        accountStatus = AccountStatus.isConnect;
+      if (subModel!.isExpired == true) {
+        accountStatus = AccountStatus.isExpired;
+      } else if (subModel!.trafficEnd == true) {
+        accountStatus = AccountStatus.isTrafficEnd;
       } else {
-        accountStatus = AccountStatus.isTrafficEndOrIsExpired;
+        accountStatus = AccountStatus.isConnect;
       }
     }
     if (subModel != null) {
@@ -215,8 +243,12 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> getActiveSubAccount({bool isBackgroundCheck = false}) async {
+    if(notSubCode){
+      return;
+    }
     final res = await api.getActiveAccount(
         await PrefHelpers.getSubCode(), await PrefHelpers.getDeviceId());
+
     if (res.statusCode == 200) {
       if (res.data['data']['sub'] != null) {
         final fetchedSub = Sub.fromJson(res.data['data']['sub']);
@@ -242,10 +274,12 @@ class UserProvider extends ChangeNotifier {
     await PrefHelpers.setLastSubCheckTimestamp(
         DateTime.now().toIso8601String());
 
-    if (subModel?.isExpired == false && subModel?.trafficEnd == false) {
-      accountStatus = AccountStatus.isConnect;
+    if (subModel?.isExpired == true) {
+      accountStatus = AccountStatus.isExpired;
+    } else if (subModel?.trafficEnd == true) {
+      accountStatus = AccountStatus.isTrafficEnd;
     } else {
-      accountStatus = AccountStatus.isTrafficEndOrIsExpired;
+      accountStatus = AccountStatus.isConnect;
     }
     notifyListeners();
   }
@@ -260,10 +294,12 @@ class UserProvider extends ChangeNotifier {
         subModel = Sub.fromJson(res.data['data']['sub']);
         await Sub.saveToDB(subModel!);
 
-        if (subModel?.isExpired == false && subModel?.trafficEnd == false) {
-          // OK
+        if (subModel?.isExpired == true) {
+          accountStatus = AccountStatus.isExpired;
+        } else if (subModel?.trafficEnd == true) {
+          accountStatus = AccountStatus.isTrafficEnd;
         } else {
-          accountStatus = AccountStatus.isTrafficEndOrIsExpired;
+          accountStatus = AccountStatus.isConnect;
         }
         notifyListeners();
       }
@@ -273,72 +309,132 @@ class UserProvider extends ChangeNotifier {
   }
 
   // --- بقیه متدها بدون تغییر عمده ---
-  void checkSubNumber(String code, bool isBack, BuildContext context) async {
+  Future<void> checkSubNumber(String code, bool isBack, BuildContext context) async {
+
+    if(code.isEmpty){ // یک اصلاح کوچک برای چک کردن خالی بودن
+      return;
+    }
+
+    // بررسی اینترنت
     if (await CheckInternetConnection.checkInternetConnection() == false) {
       ViewHelper.showErrorDialog("نیاز به اتصال به اینترنت هستش", context);
       return;
     }
 
-    final res = await api.checkSubNumber(code, await PrefHelpers.getUserId());
-    // Navigator.of(context, rootNavigator: true)
-    //     .pop();
-    print(res.statusCode);
-    print(res.data);
-    if (res.statusCode == 200) {
-      subModel = Sub.fromJson(res.data['data']['sub']);
-      subCode.clear();
-      await PrefHelpers.setSubCode(code);
-      await Sub.saveToDB(subModel!);
-      await _updateLocalCache(subModel!); // آپدیت وضعیت
-      if (isBack) {
-        context.pop();
-      }
-      bool status = res.data['data']['status'];
-      if (status) {
-        ViewHelper.showSuccessDialog("اشتراک شما با موفقیت فعال شد", context);
+    // ViewHelper.showLoading(context); // اگر لودینگ دارید
+
+    try {
+      final res = await api.checkSubNumber(code, await PrefHelpers.getUserId());
+
+      // Navigator.of(context, rootNavigator: true).pop(); // اگر لودینگ دارید
+
+      if (res.statusCode == 200) {
+        // --- موفقیت: کاربر به اشتراک متصل شد ---
+        var data = res.data['data'];
+
+        try{
+          subCode.clear();
+          subModel = Sub.fromJson(data['sub']);
+        }catch(e){
+          debugPrint("Error parsing sub: $e");
+        }
+
+        // ذخیره سازی
+        await PrefHelpers.setSubCode(code);
+
+        // +++ تغییرات جدید: ریست کردن وضعیت‌های منفی +++
+        notSubCode = false;
+        kicked = false; // <--- خیلی مهم: وضعیت کیک را برمی‌داریم
+        kickedMessage = "";
+        errorMessage = null;
+        // +++ New: Reset Azad Status +++
+        isAzad = false;
+        // +++++++++++++++++++++++++++++++++++++++++++++
+
+        notifyListeners();
+
+        await Sub.saveToDB(subModel!);
+        await _updateLocalCache(subModel!);
+
+        if (isBack) {
+          Navigator.pop(context); // استفاده از Navigator استاندارد امن‌تر است
+        }
+
+        // بررسی وضعیت اعتبار اشتراک
+        bool isActive = data['status'];
+
+        if (isActive) {
+          ViewHelper.showSuccessDialog("اشتراک با موفقیت فعال شد", context);
+        } else {
+          ViewHelper.showWarningDialog(
+              "به اشتراک متصل شدید، اما این اشتراک منقضی یا غیرفعال است.", context);
+        }
+
+      } else if (res.statusCode == 502) {
+        // --- خطای ظرفیت ---
+        ViewHelper.showErrorDialog(
+            "ظرفیت این اشتراک تکمیل شده است.", context);
+
+      } else if (res.statusCode == 501) {
+        // --- کاربر از قبل داخل همین اشتراک است ---
+
+        // +++ اینجا هم باید وضعیت کیک را برداریم چون کاربر تایید شده +++
+        kicked = false;
+        notSubCode = false;
+        // +++ New: Reset Azad Status +++
+        isAzad = false;
+        notifyListeners();
+        // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+        if (isBack) Navigator.pop(context);
+        ViewHelper.showSuccessDialog("شما هم‌اکنون در این اشتراک هستید.", context);
+
+      } else if (res.statusCode == 404) {
+        ViewHelper.showErrorDialog("کد اشتراک یافت نشد.", context);
+
       } else {
         ViewHelper.showErrorDialog(
-            "کد اشتراک، به حداکثر تعداد کاربر متصل رسیده است.", context);
+            res.data['message'] ?? "خطایی رخ داد.", context);
       }
-    } else if (res.statusCode == 500) {
-      ViewHelper.showErrorDialog(
-          "کد اشتراک، به حداکثر تعداد کاربر متصل رسیده است.", context);
-    } else {
-      ViewHelper.showErrorDialog(
-          "کد اشتراک وارد شده، صحیح نمی باشد‌.", context);
+
+      notifyListeners();
+
+    } catch (e) {
+      // Navigator.of(context, rootNavigator: true).pop();
+      debugPrint("CheckSubNumber Error: $e");
+      ViewHelper.showErrorDialog("خطای ارتباط با سرور", context);
     }
-    notifyListeners();
   }
 
   String calculateTraffic() {
     if (subModel == null) return "0 GB";
-    int traffic = double.parse(subModel!.traffic).toInt() * 1024 * 1024;
-    int download = int.parse(subModel!.download);
-    return (traffic - download).size().replaceAll("i", "");
+
+    double totalTrafficMB = double.tryParse(subModel!.traffic) ?? 0.0;
+    int trafficBytes = (totalTrafficMB * 1024 * 1024).toInt();
+
+    int downloadBytes = int.tryParse(subModel!.download) ?? 0;
+
+    // محاسبه باقیمانده و جلوگیری از منفی شدن مقدار
+    int remainingBytes = trafficBytes - downloadBytes;
+    if (remainingBytes < 0) {
+      remainingBytes = 0;
+    }
+
+    return remainingBytes.size().replaceAll("i", "");
   }
 
   Future<void> _setDeviceInfo() async {
-    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
     String fcmToken = "";
-    try {
-      fcmToken = "";
-    } catch (e) {
-      fcmToken = "";
-    }
+    // try {
+    //   fcmToken = await FirebaseMessaging.instance.getToken().onError(
+    //         (error, stackTrace) => fcmToken = "",
+    //   ).timeout(Duration(seconds: 2)) ??
+    //       "";
+    // } catch (e) {
+    //   fcmToken = "";
+    // }
     if (await PrefHelpers.getDeviceId() == null) {
-      String? udid;
-      if(Platform.isWindows){
-        WindowsDeviceInfo windowsInfo = await deviceInfo.windowsInfo;
-        udid = windowsInfo.deviceId;
-      }
-      if(Platform.isLinux){
-        LinuxDeviceInfo windowsInfo = await deviceInfo.linuxInfo;
-        udid = windowsInfo.machineId;
-      }
-      if(Platform.isMacOS){
-        MacOsDeviceInfo macInfo = await deviceInfo.macOsInfo;
-        udid = macInfo.systemGUID;
-      }
+      String? udid = await MobileDeviceIdentifier().getDeviceId();
       await PrefHelpers.setDeviceId(udid ?? "");
     }
     final res =
@@ -369,6 +465,32 @@ class UserProvider extends ChangeNotifier {
       }
       if (res.data['data']['info']['wallet'] != null) {
         await PrefHelpers.setWalletId(res.data['data']['info']['wallet']);
+      }
+      try {
+        var info = res.data['data']['info'];
+
+        // +++ New: Check is_azad flag +++
+        if (info['is_azad'] == true) {
+          isAzad = true;
+        } else {
+          isAzad = false;
+        }
+
+        if (info['kick_info'] != null && info['kick_info']['is_kicked'] == true) {
+          subModel = null;
+          kicked = true;
+          // Capture the message if available
+          kickedMessage = info['kick_info']['message'] ?? "اشتراک شما قطع شده است.";
+          notifyListeners();
+        }else{
+          if (kicked) {
+            kicked = false;
+            kickedMessage = "";
+            notifyListeners();
+          }
+        }
+      } catch (e) {
+        debugPrint("Error checking kick info: $e");
       }
     }
     try {} catch (e) {
@@ -413,7 +535,7 @@ class UserProvider extends ChangeNotifier {
       if (res.statusCode == 200) {
         if (res.data['data']['sub'] != null) {
           accountInfoModel = AccountInfoModel.fromJson(res.data['data']);
-          await AccountInfoModel.saveToDB(accountInfoModel!.sub);
+          // await AccountInfoModel.saveToDB(accountInfoModel!.sub);
         } else {
           accountInfoModel?.sub = [];
         }
@@ -509,7 +631,6 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // متد جدید: گرفتن لیست فیلتر شده بر اساس تب انتخاب شده
   List<p.Period> get filteredPeriods {
     if (periodList == null) return [];
     if (selectedDurationTab.isEmpty) return periodList!.period;
@@ -575,21 +696,73 @@ class UserProvider extends ChangeNotifier {
       return;
     }
 
-    // فرض بر این است که شما متد api.accountRenewalWithWallet را هم در فایل api_service خود آپدیت کرده‌اید
-    // که پارامتر periodId را هم بگیرد. اگر نکردید، حتما آنجا هم اضافه کنید.
+    // ViewHelper.showLoading(context); // نمایش لودینگ
+
     final res = await api.accountRenewalWithWallet(
       subCodeValue,
       offerCode.text,
-      periodId,
     );
 
+    // Navigator.of(context, rootNavigator: true).pop(); // بستن لودینگ
+
     if (res.statusCode == 200) {
-      Navigator.of(context, rootNavigator: true).pop();
-      getActiveSubAccount();
-      getWallet();
+      // +++ تغییرات جدید: آپدیت وضعیت‌های لوکال +++
+
+      // 1. چون تمدید کردیم، اگر قبلا کیک شده بود، الان رفع شده
+      kicked = false;
+      // +++ Reset Azad Status +++
+      isAzad = false;
+
+      // 2. دریافت اطلاعات جدید اشتراک (تاریخ و ترافیک جدید)
+      await getActiveSubAccount();
+      await getAccountInfo();
+      await getWallet(); // آپدیت موجودی
+
+      notifyListeners();
+
       ViewHelper.showSuccessDialog("باموفقیت تمدید شد", context);
     } else {
       ViewHelper.showErrorDialog("موجودی کیف پول شما کافی نیست", context);
+    }
+  }
+
+  void setDefaultSub(String subCode, BuildContext context) async {
+    if (await CheckInternetConnection.checkInternetConnection() == false) {
+      ViewHelper.showErrorDialog("نیاز به اتصال به اینترنت هستش", context);
+      return;
+    }
+
+    ViewHelper.showLoading(context);
+
+    try {
+      String userId = await PrefHelpers.getUserId();
+      final res = await api.setDefaultSubscription(subCode, userId);
+
+      Navigator.of(context, rootNavigator: true).pop(); // بستن لودینگ
+
+      if (res.statusCode == 200) {
+        await PrefHelpers.setSubCode(subCode);
+
+        // +++ تغییر جدید: رفع وضعیت کیک +++
+        // چون کاربر دستی فعال کرده، یعنی می‌خواد وصل شه و سرور هم اجازه داده
+        kicked = false;
+        notSubCode = false;
+        // +++ Reset Azad Status +++
+        isAzad = false;
+
+        notifyListeners();
+        await initializeApp(context);
+
+        ViewHelper.showSuccessDialog(
+            "اشتراک پیش‌فرض با موفقیت تغییر کرد", context);
+
+      } else {
+        ViewHelper.showErrorDialog(
+            res.data['message'] ?? "خطایی رخ داد", context);
+      }
+    } catch (e) {
+      Navigator.of(context, rootNavigator: true).pop();
+      ViewHelper.showErrorDialog("خطای شبکه: $e", context);
     }
   }
 
@@ -614,7 +787,7 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  void createSubscriptionReceipt(
+  Future<void> createSubscriptionReceipt(
       context, String path, periodId, phone_number) async {
     // Internet Check Guard
     if (await CheckInternetConnection.checkInternetConnection() == false) {
@@ -671,7 +844,6 @@ class UserProvider extends ChangeNotifier {
 
     request.fields.addAll({
       "subCode": subCode,
-      "periodId": periodId,
       // <--- ارسال شناسه پلن جدید به فیلدها
     });
 
@@ -744,7 +916,6 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-// یک متد کمکی برای ریست کردن دیتا
   void _resetOfferData() {
     isConfirmOffer = false;
     percent = "0"; // یا مقدار پیش‌فرض شما
@@ -760,10 +931,6 @@ class UserProvider extends ChangeNotifier {
     periodPrice = item.periodPrice;
     notifyListeners();
   }
-
-  // ===================================================================
-  // --- بخش WalletProvider ---
-  // ===================================================================
 
   Future<void> getWallet() async {
     // walletLoading = false;
@@ -789,7 +956,7 @@ class UserProvider extends ChangeNotifier {
     }
 
     final res = await api.chargeWallet(
-        true, walletPriceController.text, walletModel!.id);
+        true, walletPriceController.text.replaceAll(",", ""), walletModel!.id);
     if (res.statusCode == 200) {
       Navigator.pop(context);
       await launchUrl(
@@ -816,7 +983,7 @@ class UserProvider extends ChangeNotifier {
       Uri.parse("${ApiHelper.baseUrl}wallets/chargeWalletReceipt/"),
     );
     request.fields.addAll({
-      "amount": walletPriceController.text,
+      "amount": walletPriceController.text.replaceAll(",", ""),
       "walletId": walletModel!.id,
     });
     request.files.add(await http.MultipartFile.fromPath('file', path));
@@ -849,25 +1016,17 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ===================================================================
-  // --- بخش FcmController ---
-  // ===================================================================
-
-  // Future<void> _initFCM() async {
-  //   await _fcm.requestPermission(
-  //     alert: false,
-  //     announcement: false,
-  //     badge: true,
-  //     carPlay: false,
-  //     criticalAlert: false,
-  //     provisional: false,
-  //     sound: false,
-  //   );
-  // }
-
-  // ===================================================================
-  // --- بخش DeepLink (ادغام شده) ---
-  // ===================================================================
+  Future<void> _initFCM() async {
+    // await _fcm.requestPermission(
+    //   alert: false,
+    //   announcement: false,
+    //   badge: true,
+    //   carPlay: false,
+    //   criticalAlert: false,
+    //   provisional: false,
+    //   sound: false,
+    // );
+  }
 
   void _initDeepLinks(BuildContext context) {
     // 3. اگر لیسنر قبلی وجود دارد، آن را کنسل کن تا دوتا نشود
@@ -922,7 +1081,6 @@ class UserProvider extends ChangeNotifier {
   }
   void disposed() {
     _linkSubscription?.cancel();
-    super.dispose();
   }
 
   void _showDialogSafe(BuildContext context, String message) {
@@ -934,7 +1092,6 @@ class UserProvider extends ChangeNotifier {
       }
     });
   }
-
 
   void disconnectOthers(String subCode, BuildContext context) async {
     // بررسی اینترنت
@@ -951,7 +1108,7 @@ class UserProvider extends ChangeNotifier {
       final res = await api.disconnectOtherUsers(
           subCode, await PrefHelpers.getUserId());
 
-      Navigator.of(context, rootNavigator: true).pop(); // بستن لودینگ
+      Navigator.of(context, ).pop(); // بستن لودینگ
 
       if (res.statusCode == 200) {
         // دریافت کد اشتراک جدید از پاسخ سرور
@@ -973,9 +1130,58 @@ class UserProvider extends ChangeNotifier {
       ViewHelper.showErrorDialog("خطای شبکه: $e", context);
     }
   }
+
+  void releaseSubscription(String subCode, BuildContext context) async {
+    if (await CheckInternetConnection.checkInternetConnection() == false) {
+      ViewHelper.showErrorDialog("نیاز به اتصال به اینترنت هستش", context);
+      return;
+    }
+
+    ViewHelper.showLoading(context);
+
+    try {
+      final res = await api.releaseSubscription(subCode, await PrefHelpers.getUserId());
+
+      Navigator.of(context, rootNavigator: true).pop();
+
+      if (res.statusCode == 200) {
+
+        // +++ لاجیک هوشمند حذف اشتراک +++
+        // فقط اگر اشتراکی که آزاد کردیم، همان اشتراک فعال فعلی بود، آن را از تنظیمات گوشی پاک کن
+        String currentSavedSub = await PrefHelpers.getSubCode();
+        if (currentSavedSub == subCode) {
+          await PrefHelpers.removeSubCode();
+          notSubCode = true;
+          subModel = null; // پاک کردن مدل فعلی
+          // +++ Update UI state immediately +++
+          isAzad = true;
+        }
+
+        // رفرش لیست اشتراک‌ها (چون active_sub_count تغییر کرده)
+        getAccountInfo();
+
+        notifyListeners();
+
+        // اگر اشتراک فعلی بود، اپ را ریست کن تا وضعیت "بدون اشتراک" را نشان دهد
+        if (currentSavedSub == subCode) {
+          await initializeApp(context);
+        }
+
+        ViewHelper.showSuccessDialog(
+            "اشتراک از روی دستگاه شما آزاد شد.", context);
+
+      } else {
+        ViewHelper.showErrorDialog(
+            res.data['message'] ?? "خطایی رخ داد", context);
+      }
+    } catch (e) {
+      Navigator.of(context, rootNavigator: true).pop();
+      ViewHelper.showErrorDialog("خطای شبکه: $e", context);
+    }
+  }
+
 }
 
-// مدل کمکی برای لیست قیمت‌های کیف پول
 class PriceModel {
   int price;
   bool selected = false;

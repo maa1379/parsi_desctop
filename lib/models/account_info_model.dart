@@ -18,7 +18,7 @@ class AccountInfoModel {
         "sub": List<dynamic>.from(sub.map((x) => x.toJson())),
       };
 
-  static Future<void> saveToDB(List<Sub> sub) async {
+/*  static Future<void> saveToDB(List<Sub> sub) async {
     await PrefHelpers.setInfoModel(sub);
   }
 
@@ -34,7 +34,7 @@ class AccountInfoModel {
       }
       return AccountInfoModel(sub: list);
     }
-  }
+  }*/
 }
 
 class Sub {
@@ -58,6 +58,7 @@ class Sub {
   String download;
   DateTime createdAt;
   DateTime updatedAt;
+  DateTime? renewedAt;
   int v;
 
   Sub({
@@ -81,6 +82,7 @@ class Sub {
     required this.download,
     required this.createdAt,
     required this.updatedAt,
+    required this.renewedAt,
     required this.v,
   });
 
@@ -104,6 +106,7 @@ class Sub {
         upload: json["upload"] ?? "0",
         download: json["download"] ?? "0",
         createdAt: DateTime.parse(json["createdAt"]),
+        renewedAt: json["renewed_at"] == null ?null:DateTime.parse(json["renewed_at"]),
         updatedAt: DateTime.parse(json["updatedAt"]),
         v: json["__v"],
       );
@@ -129,6 +132,7 @@ class Sub {
         "download": download,
         "createdAt": createdAt.toIso8601String(),
         "updatedAt": updatedAt.toIso8601String(),
+        "renewed_at": renewedAt?.toIso8601String(),
         "__v": v,
       };
 

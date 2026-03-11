@@ -15,13 +15,13 @@ class SplashProvider extends ChangeNotifier {
   bool firstTimeOfflineError = false; // New flag
 
   Future<void> _navigateToMain(BuildContext context) async {
-    await Future.delayed(Duration(seconds: 2));
+    await Future.delayed(Duration(seconds: 1));
     if (context.mounted) {
       context.rTo(const MainScreen());
     }
   }
 
-  Future<void> getSetting(BuildContext context) async {
+  Future<void> getSetting(BuildContext context,bool withBack) async {
     try {
       PackageInfo packageInfo = await PackageInfo.fromPlatform();
       final res = await api.getSetting();
@@ -36,21 +36,27 @@ class SplashProvider extends ChangeNotifier {
                 context, settingModel!.last.appDownloadLink);
           }
         } else {
+          if(withBack){
           await _navigateToMain(context);
+          }
         }
       } else {
         debugPrint("Error getSetting: ${res.data['message']}");
         // If API fails, try to load from DB
         settingModel = await SettingModel.getDB();
         notifyListeners();
-        _navigateToMain(context);
+        if(withBack){
+          await _navigateToMain(context);
+        }
       }
     } catch (e) {
       debugPrint("Error getSetting catch: $e");
       // If network error, try to load from DB
       settingModel = await SettingModel.getDB();
       notifyListeners();
-      _navigateToMain(context);
+      if(withBack){
+        await _navigateToMain(context);
+      }
     }
   }
 
@@ -58,7 +64,7 @@ class SplashProvider extends ChangeNotifier {
     firstTimeOfflineError = false; // Reset flag
     bool check = await CheckInternetConnection.checkInternetConnection();
     if (check) {
-      await getSetting(context);
+      await getSetting(context,true);
     } else {
       // Offline mode
       settingModel = await SettingModel.getDB();

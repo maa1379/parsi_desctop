@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 import 'package:parsi/core/PrefHelper/PrefHelpers.dart';
 import 'package:parsi/core/nav_helper.dart';
+import 'package:parsi/core/number_formatters.dart';
 import 'package:parsi/screens/payment_screen.dart';
 import 'package:parsi/screens/profile_screen.dart';
 import 'package:parsi/screens/support_screen.dart';
+import 'package:persian_number_utility/persian_number_utility.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/view_helper.dart';
 import '../../generated/assets.dart';
 import '../../models/account_info_model.dart';
+import '../../provider/checkOutUtil.dart';
 import '../../provider/splash_provider.dart';
 import '../../provider/user_provider.dart';
+import '../faq_screen.dart';
+import '../traning_screen.dart';
+import '../wallet_screen.dart';
 
 // تابع اصلی برای نمایش دیالوگ
 void showCooperationDialog(BuildContext context) {
@@ -75,7 +82,7 @@ class _CooperationDialogContent extends StatelessWidget {
                   children: [
                     // عنوان
                     const Text(
-                      "درخواست همکاری",
+                      "اپلیکیشن نسخه همکاری",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -84,8 +91,28 @@ class _CooperationDialogContent extends StatelessWidget {
                     ),
                     const Gap(30), // متن توضیحات
                     const Text(
-                      "جهت همکاری در فروش در ربات تلگرام و اپلیکیشن پارسی، می توانید از طریق راه های ارتباطی زیر اقدام نمایید.",
-                      textAlign: TextAlign.center,
+                      "در این نسخه ، گزینه خرید اشتراک، پشتیبانی و چت روم وجود ندارد.اپلیکیشن نسخه همکاری را برای دوستان و مشتریان خود ارسال کنید و کد اشتراک خریداری شده از همین اپلیکیشن را با قیمت دلخواه خودتان، به آنها بفروشید.خرید، تمدید و پشتیبانی اشتراک کاربرهایتان با خودتان است.",
+                      textAlign: TextAlign.start,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        // رنگ سفید کمی شفاف
+                        fontSize: 15,
+                        height: 1.6, // فاصله بین خطوط برای خوانایی بهتر
+                      ),
+                    ),
+                    const Text(
+                      "مهم: کاربرها در این نسخه امکان خرید و تمدید اشتراک را ندارند و صرفا از شما باید کد اشتراک را خریداری کنند.",
+                      textAlign: TextAlign.start,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        // رنگ سفید کمی شفاف
+                        fontSize: 15,
+                        height: 1.6, // فاصله بین خطوط برای خوانایی بهتر
+                      ),
+                    ),
+                    const Text(
+                      "توجه: سرورها در هر دو اپلیکیشن نسخه اصلی و همکاری کاملا یکسان است",
+                      textAlign: TextAlign.start,
                       style: TextStyle(
                         color: Colors.white70,
                         // رنگ سفید کمی شفاف
@@ -94,6 +121,15 @@ class _CooperationDialogContent extends StatelessWidget {
                       ),
                     ),
                     const Gap(40), // دکمه پشتیبانی آنلاین
+                    _buildActionButton(
+                      text: "دانلود اپلیکیشن نسخه همکاری",
+                      color: greenColor,
+                      onTap: () {
+                        launchUrl(Uri.parse(settings?.hamkarLink ?? ""),
+                            mode: LaunchMode.externalApplication);
+                      },
+                    ),
+                    const Gap(15),
                     _buildActionButton(
                       text: "پشتیبانی آنلاین",
                       color: greenColor,
@@ -680,8 +716,10 @@ class _CooperationDialogContent4 extends StatelessWidget {
                               color: Colors.green,
                             ),
                           ),
-                          hintText: "کد اشتراک",
-                          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                          hint: const Text(
+                            "کد اشتراک",
+                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
                         ),
                       ),
                     ),
@@ -689,7 +727,7 @@ class _CooperationDialogContent4 extends StatelessWidget {
                     _buildActionButton(
                       text: "ثبت",
                       color: greenColor,
-                      onTap: () {
+                      onTap: () async{
                         final userProvider =
                             Provider.of<UserProvider>(context, listen: false);
                         if (userProvider.subCode.text.isEmpty) {
@@ -697,8 +735,9 @@ class _CooperationDialogContent4 extends StatelessWidget {
                               "کد اشتراک را وارد کنید!", context);
                         } else {
                           // تابع checkSubNumber در UserProvider باقی مانده است
-                          userProvider.checkSubNumber(
+                         await userProvider.checkSubNumber(
                               userProvider.subCode.text, true, context);
+                         userProvider.initializeApp2(context);
                         }
                       },
                     ),
@@ -788,33 +827,6 @@ class _CooperationDialogContent4 extends StatelessWidget {
   }
 }
 
-// bool _hasShownServerStatusDialog = false;
-//
-// void showCooperationDialog5(BuildContext context, String subCode) {
-//
-//   // 2. چک کنید اگر قبلاً نمایش داده شده، تابع را متوقف کنید
-//   if (_hasShownServerStatusDialog) return;
-//
-//   // 3. وضعیت را به true تغییر دهید تا دفعات بعد اجرا نشود
-//   _hasShownServerStatusDialog = true;
-//
-//   showDialog(
-//     context: context,
-//     barrierDismissible: false,
-//     builder: (BuildContext ctx) {
-//       return PopScope(
-//         canPop: false,
-//         child: Directionality(
-//           textDirection: TextDirection.rtl,
-//           child: CooperationDialogContent5(
-//           ),
-//         ),
-//       );
-//     },
-//   ).then((_) {
-//   });
-// }
-
 class CooperationDialogContent5 extends StatefulWidget {
   const CooperationDialogContent5({super.key});
 
@@ -826,12 +838,26 @@ class CooperationDialogContent5 extends StatefulWidget {
 class _CooperationDialogContent5State extends State<CooperationDialogContent5> {
   String subCode = "";
   Sub? subModel;
+
+  String expireDateStr = "";
+  String expireTimeStr = "";
+
   @override
   void initState() {
     Future.microtask(
-      () async {
+          () async {
         subModel = await Sub.getDB();
         subCode = await PrefHelpers.getSubCode();
+
+        if (subModel != null) {
+          // استفاده از toLocal برای حل مشکل تفاوت ساعت با سرور (UTC)
+          DateTime expireDateTime = subModel!.subDay.toLocal();
+
+          expireTimeStr =
+          "${expireDateTime.hour.toString().padLeft(2, '0')}:${expireDateTime.minute.toString().padLeft(2, '0')}";
+          expireDateStr = expireDateTime.toPersianDate();
+        }
+
         setState(() {});
       },
     );
@@ -841,24 +867,19 @@ class _CooperationDialogContent5State extends State<CooperationDialogContent5> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    // رنگ سبز مورد استفاده در دکمه‌ها (مشابه تصویر)
-    const greenColor = Color(0xFF1B5E20); // یا Color(0xFF2E7D32)
+    const greenColor = Color(0xFF1B5E20);
+
     return Center(
       child: Container(
-        width: size.width * 0.85,
+        width: size.width * 0.90,
         constraints: const BoxConstraints(maxWidth: 400),
-        // حداکثر عرض
         decoration: BoxDecoration(
-          // گرادینت تیره پس‌زمینه
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF2C313C), // رنگ کمی روشن‌تر در بالا سمت چپ
-              Color(0xFF0D0E11), // رنگ تیره‌تر در پایین سمت راست
-            ],
+            colors: [Color(0xFF2C313C), Color(0xFF0D0E11)],
           ),
-          borderRadius: BorderRadius.circular(35), // گوشه‌های گرد
+          borderRadius: BorderRadius.circular(35),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.5),
@@ -876,88 +897,122 @@ class _CooperationDialogContent5State extends State<CooperationDialogContent5> {
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: Image.asset(
-                    Assets.imagesEgel,
+                    'assets/images/egel.png',
                     height: 100,
-                    opacity: AlwaysStoppedAnimation(0.05),
+                    opacity: const AlwaysStoppedAnimation(0.05),
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(30, 30, 30, 130),
+                padding: const EdgeInsets.fromLTRB(25, 30, 25, 30),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min, // ارتفاع به اندازه محتوا
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // عنوان "درخواست همکاری"
                     const Text(
-                      "اطلاعیه  اتمام حجم یا زمان",
+                      "اطلاعیه اتمام زمان استفاده از اشتراک",
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                           color: Colors.red,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           shadows: [
                             Shadow(
-                              offset: Offset(0, 2),
-                              blurRadius: 3.0,
-                              color: Colors.black45,
-                            ),
+                                offset: Offset(0, 2),
+                                blurRadius: 3.0,
+                                color: Colors.black45),
                           ]),
                     ),
-                    const Gap(30),
-                    // متن توضیحات
-                    Text(
-                      (subModel?.period.isFree == true)
-                          ? "اعتبار اشتراک نسخه ی رایگان و آزمایشی شما با کد اشتراک $subCode  به اتمام رسیده است. لطفا از دکمه ی زیر، اقدام به خرید اشتراک نمایید."
-                          : "کاربر گرامی!\nاشتراک $subCode بدلیل اتمام حجم / زمان سرویس غیر فعال شده است. جهت فعالسازی و استفاده از امکانات اپلیکیشن میبایست اشتراک را خریداری نمایید.",
+                    const Gap(25),
+                    RichText(
                       textAlign: TextAlign.start,
                       textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        height: 1.6, // فاصله بین خطوط برای خوانایی بهتر
+                      text: TextSpan(
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            height: 1.8,
+                            fontFamily: 'Vazir'), // در صورت نیاز به فونت پیش‌فرض، آن را حذف کنید
+                        children: [
+                          const TextSpan(text: "کاربر گرامی،\nاشتراک شما ("),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: InkWell(
+                              onTap: () {
+                                Clipboard.setData(ClipboardData(text: subCode));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text("کد اشتراک کپی شد"),
+                                      backgroundColor: Colors.green),
+                                );
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Gap(4),
+                                  Text(subCode,
+                                      style: const TextStyle(
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14)),
+                                  const Gap(4),
+                                  const Icon(Icons.copy,
+                                      color: Colors.red, size: 14),
+                                  const Gap(4),
+                                ],
+                              ),
+                            ),
+                          ),
+                          TextSpan(
+                              text:
+                              ") به علت رسیدن به پایان مدت زمان اشتراک، در تاریخ $expireDateStr و ساعت ( $expireTimeStr )، منقضی شده است.\nلطفاً جهت تمدید همین اشتراک با همین پلن، گزینه \"تمدید همین اشترا‌ک\" را انتخاب نمایید. در صورتی که قصد خرید پلن های دیگری را دارید، گزینه \"خرید اشتراک جدید\" را انتخاب کنید.\nهمچنین، در صورتی که از قبل اشتراک فعال دیگری دارید، می‌توانید از بخش \"مدیریت اشتراک ها\" اقدام به فعال‌سازی آن نمایید."),
+                        ],
                       ),
                     ),
-                    const Gap(40),
-                    // دکمه پشتیبانی آنلاین
-                    _buildActionButton(
-                      text: (subModel?.period.isFree == true)
-                          ? "خرید و فعالسازی اشتراک"
-                          : "خرید و فعالسازی اشتراک",
-                          // : "تمدید و فعالسازی اشتراک",
-                      color: greenColor,
-                      onTap: () {
-                        context.pop();
-                        if ((subModel?.period.isFree == true)) {
-                          context.to(PaymentScreen());
-                        } else {
-                          // context.to(ProfileScreen());
-                          context.to(PaymentScreen());
-                        }
-                      },
-                    ),
-                    Gap(10),
-                    _buildActionButton(
-                      text: "مدیریت اشتراک ها",
-                      color: greenColor,
-                      onTap: () {
-                        context.to(ProfileScreen());
-                      },
-                    ),
-                    Gap(10),
-                    _buildActionButton(
-                      text: "ثبت کد اشتراک",
-                      color: greenColor,
-                      onTap: () {
-                        showCooperationDialog4(context);
-                      },
-                    ),
-                    Gap(10),
-                    _buildActionButton(
-                      text: "ارتباط با پشتیبانی",
-                      color: greenColor,
-                      onTap: () {
-                        context.to(SupportScreen());
-                      },
-                    ),
+                    const Gap(30),
+                    _buildDoubleActionButtons(
+                        text1: "تمدید همین اشترا‌ک",
+                        text2: "خرید اشتراک جدید",
+                        color: greenColor,
+                        onTap1: () {
+                          // اول چک می‌کنیم اشتراک رایگان نباشه و دیتایی لود شده باشه
+                          if (subModel != null && !subModel!.period.isFree) {
+                            Navigator.pop(context); // دیالوگ اخطار رو می‌بندیم
+                            // دیالوگ پرداخت رو برای همین اشتراک باز می‌کنیم
+                            CheckoutUtils.checkOutDialog(
+                              context,
+                              subCode,
+                              subModel!.period.periodPrice,
+                              subModel!.period.id,
+                              subModel!.period.periodName,
+                            );
+                          } else {
+                            // اگر رایگان بود یا دیتایی نبود، می‌فرستیمش صفحه خرید جدید
+                            Navigator.pop(context);
+                            context.to(const PaymentScreen());
+                          }
+                        },
+                        onTap2: () => context.to(const PaymentScreen())),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "مدیریت اشتراک ها",
+                        text2: "ثبت کد اشتراک",
+                        color: greenColor,
+                        onTap1: () => context.to(const ProfileScreen()),
+                        onTap2: () => showCooperationDialog4(context)),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "آموزش ها",
+                        text2: "سوالات متداول",
+                        color: greenColor,
+                        onTap1: () => context.to(TrainingScreen()),
+                        onTap2: () => context.to(const FAQScreen())),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "کیف پول",
+                        text2: "پشتیبانی",
+                        color: greenColor,
+                        onTap1: () => context.to(const WalletScreen()),
+                        onTap2: () => context.to(const SupportScreen())),
                   ],
                 ),
               ),
@@ -968,35 +1023,43 @@ class _CooperationDialogContent5State extends State<CooperationDialogContent5> {
     );
   }
 
-  // ویجت سازنده دکمه‌های عملیاتی (سبز رنگ)
-  Widget _buildActionButton({
-    required String text,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildDoubleActionButtons(
+      {required String text1,
+        required String text2,
+        required Color color,
+        required VoidCallback onTap1,
+        required VoidCallback onTap2}) {
+    return Row(
+      children: [
+        Expanded(
+            child: _buildActionButton(text: text1, color: color, onTap: onTap1)),
+        const Gap(10),
+        Expanded(
+            child: _buildActionButton(text: text2, color: color, onTap: onTap2)),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(
+      {required String text,
+        required Color color,
+        required VoidCallback onTap}) {
     return SizedBox(
-      width: double.infinity,
-      // تمام عرض
       height: 45,
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
           foregroundColor: Colors.white,
-          // رنگ متن
           side: BorderSide(color: color, width: 1.5),
-          // رنگ و ضخامت حاشیه سبز
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          backgroundColor:
-              Colors.black.withOpacity(0.2), // پس‌زمینه کمی تیره داخل دکمه
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: Colors.black.withOpacity(0.2),
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -1169,7 +1232,8 @@ class _CooperationDialogContent6 extends StatelessWidget {
 }
 
 // تابع اصلی برای نمایش دیالوگ
-void showCooperationDialog7(BuildContext context) {
+void showCooperationDialog7(BuildContext context) async{
+  await context.read<SplashProvider>().getSetting(context,false);
   showDialog(
     context: context,
     barrierDismissible: true,
@@ -1332,6 +1396,777 @@ class _CooperationDialogContent7 extends StatelessWidget {
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+class CooperationDialogContent8 extends StatefulWidget {
+  const CooperationDialogContent8({super.key});
+
+  @override
+  State<CooperationDialogContent8> createState() =>
+      _CooperationDialogContent8State();
+}
+
+class _CooperationDialogContent8State extends State<CooperationDialogContent8> {
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    const greenColor = Color(0xFF1B5E20); // یا Color(0xFF2E7D32)
+    return Center(
+      child: Container(
+        width: size.width * 0.85,
+        constraints: const BoxConstraints(maxWidth: 400),
+        // حداکثر عرض
+        decoration: BoxDecoration(
+          // گرادینت تیره پس‌زمینه
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF2C313C), // رنگ کمی روشن‌تر در بالا سمت چپ
+              Color(0xFF0D0E11), // رنگ تیره‌تر در پایین سمت راست
+            ],
+          ),
+          borderRadius: BorderRadius.circular(35), // گوشه‌های گرد
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                bottom: 10,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Image.asset(
+                    Assets.imagesEgel,
+                    height: 100,
+                    opacity: AlwaysStoppedAnimation(0.05),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(30, 30, 30, 130),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min, // ارتفاع به اندازه محتوا
+                  children: [
+                    // عنوان "درخواست همکاری"
+                    const Text(
+                      "اطلاعیه غیر فعال بودن اشتراک",
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(0, 2),
+                              blurRadius: 3.0,
+                              color: Colors.black45,
+                            ),
+                          ]),
+                    ),
+                    const Gap(30),
+                    // متن توضیحات
+                    Text(
+                      "دلایل نمایش این اطلاعیه:\n۱- با فیلترشکن روشن وارد برنامه شدید ( فیلترشکن را خاموش کنید، برنامه را بسته و مجدد وارد شوید )\n۲- به اشتراکی وصل بودید که خریدار اشترک گزینه ی تغییر کد اشتراک را زده است\n۳- ارتباط اپلیکیشن با سرور قطع شده است",
+                      textAlign: TextAlign.start,
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        height: 1.6, // فاصله بین خطوط برای خوانایی بهتر
+                      ),
+                    ),
+                    const Gap(40),
+                    // دکمه پشتیبانی آنلاین
+
+                    _buildDoubleActionButtons(
+                        text1: "خرید اشتراک",
+                        text2: "مدیریت اشتراک ها",
+                        color: greenColor,
+                        onTap1: () => context.to(const PaymentScreen()),
+                        onTap2: () => context.to(const ProfileScreen())),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "ثبت کد اشتراک",
+                        text2: "ارتباط با پشتیبانی",
+                        color: greenColor,
+                        onTap1: () =>  showCooperationDialog4(context),
+                        onTap2: () => context.to(const SupportScreen())),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "آموزش ها",
+                        text2: "سوالات متداول",
+                        color: greenColor,
+                        onTap1: () => context.to(TrainingScreen()),
+                        onTap2: () => context.to(const FAQScreen())),
+                    const Gap(10),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDoubleActionButtons(
+      {required String text1,
+        required String text2,
+        required Color color,
+        required VoidCallback onTap1,
+        required VoidCallback onTap2}) {
+    return Row(
+      children: [
+        Expanded(
+            child: _buildActionButton(text: text1, color: color, onTap: onTap1)),
+        const Gap(10),
+        Expanded(
+            child: _buildActionButton(text: text2, color: color, onTap: onTap2)),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(
+      {required String text,
+        required Color color,
+        required VoidCallback onTap}) {
+    return SizedBox(
+      height: 45,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          foregroundColor: Colors.white,
+          side: BorderSide(color: color, width: 1.5),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: Colors.black.withOpacity(0.2),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+class CooperationDialogContent9 extends StatefulWidget {
+  const CooperationDialogContent9({super.key});
+
+  @override
+  State<CooperationDialogContent9> createState() =>
+      _CooperationDialogContent9State();
+}
+
+class _CooperationDialogContent9State extends State<CooperationDialogContent9> {
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    const greenColor = Color(0xFF1B5E20); // یا Color(0xFF2E7D32)
+    return Center(
+      child: Container(
+        width: size.width * 0.85,
+        constraints: const BoxConstraints(maxWidth: 400),
+        // حداکثر عرض
+        decoration: BoxDecoration(
+          // گرادینت تیره پس‌زمینه
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF2C313C), // رنگ کمی روشن‌تر در بالا سمت چپ
+              Color(0xFF0D0E11), // رنگ تیره‌تر در پایین سمت راست
+            ],
+          ),
+          borderRadius: BorderRadius.circular(35), // گوشه‌های گرد
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                bottom: 10,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Image.asset(
+                    Assets.imagesEgel,
+                    height: 100,
+                    opacity: AlwaysStoppedAnimation(0.05),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(30, 30, 30, 130),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min, // ارتفاع به اندازه محتوا
+                  children: [
+                    // عنوان "درخواست همکاری"
+                    const Text(
+                      "اطلاعیه فعال سازی اشتراک",
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(0, 2),
+                              blurRadius: 3.0,
+                              color: Colors.black45,
+                            ),
+                          ]),
+                    ),
+                    const Gap(30),
+                    // متن توضیحات
+                    Text(
+                      "جهت ادامه ی فعالیت در این اپلیکیشن، میبایست اشتراک جدید خریداری کنید.\nدرصورتی که از قبل اشتراکی دارید که هنوز منقضی نشده، وارد بخش مدیریت اشتراک ها شده و اشتراک مورد نظر را فعال کنید.",
+                      textAlign: TextAlign.start,
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        height: 1.6, // فاصله بین خطوط برای خوانایی بهتر
+                      ),
+                    ),
+                    const Gap(40),
+                    // دکمه پشتیبانی آنلاین
+                    _buildActionButton(
+                      text: "خرید اشتراک",
+                      color: greenColor,
+                      onTap: () {
+                        context.pop();
+                          context.to(PaymentScreen());
+                      },
+                    ),
+                    Gap(10),
+                    _buildActionButton(
+                      text: "مدیریت اشتراک ها",
+                      color: greenColor,
+                      onTap: () {
+                        context.to(ProfileScreen());
+                      },
+                    ),
+                    Gap(10),
+                    _buildActionButton(
+                      text: "ثبت کد اشتراک",
+                      color: greenColor,
+                      onTap: () {
+                        showCooperationDialog4(context);
+                      },
+                    ),
+                    Gap(10),
+                    _buildActionButton(
+                      text: "ارتباط با پشتیبانی",
+                      color: greenColor,
+                      onTap: () {
+                        context.to(SupportScreen());
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ویجت سازنده دکمه‌های عملیاتی (سبز رنگ)
+  Widget _buildActionButton({
+    required String text,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      // تمام عرض
+      height: 45,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          // رنگ متن
+          side: BorderSide(color: color, width: 1.5),
+          // رنگ و ضخامت حاشیه سبز
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          backgroundColor:
+          Colors.black.withOpacity(0.2), // پس‌زمینه کمی تیره داخل دکمه
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+class CooperationDialogContent10 extends StatefulWidget {
+  const CooperationDialogContent10({super.key});
+
+  @override
+  State<CooperationDialogContent10> createState() =>
+      _CooperationDialogContent10State();
+}
+
+class _CooperationDialogContent10State extends State<CooperationDialogContent10> {
+  String subCode = "";
+  Sub? subModel;
+  String remainingDays = "0";
+  String formattedTraffic = "0";
+
+  @override
+  void initState() {
+    Future.microtask(
+          () async {
+        subModel = await Sub.getDB();
+        subCode = await PrefHelpers.getSubCode();
+
+        if (subModel != null) {
+          int diff = subModel!.subDay.toLocal().difference(DateTime.now()).inDays;
+          remainingDays = diff > 0 ? diff.toString() : "0";
+
+          String totalTraffic = subModel!.period.traffic?.toString() ?? "0";
+          formattedTraffic = (int.parse(totalTraffic) * 1024 * 1024)
+              .size()
+              .replaceAll("i", "");
+        }
+
+        setState(() {});
+      },
+    );
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    const greenColor = Color(0xFF1B5E20);
+    return Center(
+      child: Container(
+        width: size.width * 0.90,
+        constraints: const BoxConstraints(maxWidth: 400),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF2C313C), Color(0xFF0D0E11)],
+          ),
+          borderRadius: BorderRadius.circular(35),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                bottom: 10,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Image.asset(
+                    'assets/images/egel.png',
+                    height: 100,
+                    opacity: const AlwaysStoppedAnimation(0.05),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(25, 30, 25, 30),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "اطلاعیه اتمام حجم ترافیک مصرفی",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                                offset: Offset(0, 2),
+                                blurRadius: 3.0,
+                                color: Colors.black45),
+                          ]),
+                    ),
+                    const Gap(25),
+                    RichText(
+                      textAlign: TextAlign.start,
+                      textDirection: TextDirection.rtl,
+                      text: TextSpan(
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 13, height: 1.8),
+                        children: [
+                          const TextSpan(text: "کاربر گرامی،\nاز اشتراک شما ("),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: InkWell(
+                              onTap: () {
+                                Clipboard.setData(ClipboardData(text: subCode));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text("کد اشتراک کپی شد"),
+                                      backgroundColor: Colors.green),
+                                );
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Gap(4),
+                                  Text(subCode,
+                                      style: const TextStyle(
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14)),
+                                  const Gap(4),
+                                  const Icon(Icons.copy,
+                                      color: Colors.red, size: 14),
+                                  const Gap(4),
+                                ],
+                              ),
+                            ),
+                          ),
+                          TextSpan(
+                              text:
+                              ")، $remainingDays روز دیگر اعتبار باقی مانده است، اما ترافیک مجاز مصرفی شما ($formattedTraffic) به پایان رسیده است.\nلطفاً جهت تمدید همین اشتراک با همین پلن، گزینه \"تمدید همین اشترا‌ک\" را انتخاب نمایید. در صورتی که قصد خرید پلن های دیگری را دارید، گزینه \"خرید اشتراک جدید\" را انتخاب کنید.\nهمچنین، در صورتی که از قبل اشتراک فعال دیگری دارید، می‌توانید از بخش \"مدیریت اشتراک ها\" اقدام به فعال‌سازی آن نمایید."),
+                        ],
+                      ),
+                    ),
+                    const Gap(30),
+                    _buildDoubleActionButtons(
+                        text1: "تمدید همین اشترا‌ک",
+                        text2: "خرید اشتراک جدید",
+                        color: greenColor,
+                        onTap1: () {
+                          // اول چک می‌کنیم اشتراک رایگان نباشه و دیتایی لود شده باشه
+                          if (subModel != null && !subModel!.period.isFree) {
+                            Navigator.pop(context); // دیالوگ اخطار رو می‌بندیم
+                            // دیالوگ پرداخت رو برای همین اشتراک باز می‌کنیم
+                            CheckoutUtils.checkOutDialog(
+                              context,
+                              subCode,
+                              subModel!.period.periodPrice,
+                              subModel!.period.id,
+                              subModel!.period.periodName,
+                            );
+                          } else {
+                            // اگر رایگان بود یا دیتایی نبود، می‌فرستیمش صفحه خرید جدید
+                            Navigator.pop(context);
+                            context.to(const PaymentScreen());
+                          }
+                        },
+                        onTap2: () => context.to(const PaymentScreen())),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "مدیریت اشتراک ها",
+                        text2: "ثبت کد اشتراک",
+                        color: greenColor,
+                        onTap1: () => context.to(const ProfileScreen()),
+                        onTap2: () => showCooperationDialog4(context)),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "آموزش ها",
+                        text2: "سوالات متداول",
+                        color: greenColor,
+                        onTap1: () => context.to(TrainingScreen()),
+                        onTap2: () => context.to(const FAQScreen())),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "کیف پول",
+                        text2: "پشتیبانی",
+                        color: greenColor,
+                        onTap1: () => context.to(const WalletScreen()),
+                        onTap2: () => context.to(const SupportScreen())),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDoubleActionButtons(
+      {required String text1,
+        required String text2,
+        required Color color,
+        required VoidCallback onTap1,
+        required VoidCallback onTap2}) {
+    return Row(
+      children: [
+        Expanded(
+            child: _buildActionButton(text: text1, color: color, onTap: onTap1)),
+        const Gap(10),
+        Expanded(
+            child: _buildActionButton(text: text2, color: color, onTap: onTap2)),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(
+      {required String text,
+        required Color color,
+        required VoidCallback onTap}) {
+    return SizedBox(
+      height: 45,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          foregroundColor: Colors.white,
+          side: BorderSide(color: color, width: 1.5),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: Colors.black.withOpacity(0.2),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+}
+
+
+class CooperationDialogContent11 extends StatefulWidget {
+  const CooperationDialogContent11({super.key});
+
+  @override
+  State<CooperationDialogContent11> createState() =>
+      _CooperationDialogContent11State();
+}
+
+class _CooperationDialogContent11State extends State<CooperationDialogContent11> {
+  String subCode = "";
+  Sub? subModel;
+
+  @override
+  void initState() {
+    Future.microtask(
+          () async {
+        subModel = await Sub.getDB();
+        subCode = await PrefHelpers.getSubCode();
+        setState(() {});
+      },
+    );
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    const greenColor = Color(0xFF1B5E20);
+
+    return Center(
+      child: Container(
+        width: size.width * 0.90,
+        constraints: BoxConstraints(maxWidth: 400,maxHeight: size.height * .75),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF2C313C), Color(0xFF0D0E11)],
+          ),
+          borderRadius: BorderRadius.circular(35),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(25, 30, 25, 30),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "اطلاعیه اتمام حجم یا زمان اشتراک رایگان",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                                offset: Offset(0, 2),
+                                blurRadius: 3.0,
+                                color: Colors.black45),
+                          ]),
+                    ),
+                    const Gap(25),
+                    RichText(
+                      textAlign: TextAlign.start,
+                      textDirection: TextDirection.rtl,
+                      text: TextSpan(
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 13, height: 1.8),
+                        children: [
+                          const TextSpan(text: "کاربر گرامی !\nاعتبار اشتراک نسخه ی رایگان و آزمایشی شما با کد اشتراک "),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: InkWell(
+                              onTap: () {
+                                Clipboard.setData(ClipboardData(text: subCode));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text("کد اشتراک کپی شد"),
+                                      backgroundColor: Colors.green),
+                                );
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Gap(4),
+                                  Text(subCode,
+                                      style: const TextStyle(
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14)),
+                                  const Gap(4),
+                                  const Icon(Icons.copy,
+                                      color: Colors.red, size: 14),
+                                  const Gap(4),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const TextSpan(
+                              text: " به اتمام رسیده است. لطفا از دکمه ی زیر، اقدام به خرید اشتراک نمایید."),
+                        ],
+                      ),
+                    ),
+                    const Gap(30),
+                    // ردیف اول: تک دکمه
+                    _buildActionButton(
+                      text: "خرید اشتراک و فعالسازی",
+                      color: greenColor,
+                      onTap: () => context.to(const PaymentScreen()),
+                    ),
+                    const Gap(10),
+                    // بقیه دکمه‌ها (دو ردیفی)
+                    _buildDoubleActionButtons(
+                        text1: "مدیریت اشتراک ها",
+                        text2: "ثبت کد اشتراک",
+                        color: greenColor,
+                        onTap1: () => context.to(const ProfileScreen()),
+                        onTap2: () => showCooperationDialog4(context)),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "آموزش ها",
+                        text2: "سوالات متداول",
+                        color: greenColor,
+                        onTap1: () => context.to(TrainingScreen()),
+                        onTap2: () => context.to(const FAQScreen())),
+                    const Gap(10),
+                    _buildDoubleActionButtons(
+                        text1: "کیف پول",
+                        text2: "ارتباط با پشتیبانی",
+                        color: greenColor,
+                        onTap1: () => context.to(const WalletScreen()),
+                        onTap2: () => context.to(const SupportScreen())),
+                  ],
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Image.asset(
+                  'assets/images/egel.png',
+                  height: 100,
+                  opacity: const AlwaysStoppedAnimation(0.05),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDoubleActionButtons(
+      {required String text1,
+        required String text2,
+        required Color color,
+        required VoidCallback onTap1,
+        required VoidCallback onTap2}) {
+    return Row(
+      children: [
+        Expanded(
+            child: _buildActionButton(text: text1, color: color, onTap: onTap1)),
+        const Gap(10),
+        Expanded(
+            child: _buildActionButton(text: text2, color: color, onTap: onTap2)),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(
+      {required String text,
+        required Color color,
+        required VoidCallback onTap}) {
+    return SizedBox(
+      height: 45,
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          foregroundColor: Colors.white,
+          side: BorderSide(color: color, width: 1.5),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: Colors.black.withOpacity(0.2),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
         ),
       ),
     );

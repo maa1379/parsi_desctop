@@ -88,7 +88,7 @@ class Config {
         wireGuardEndPoint: json["wireGuard_end_point"] ?? "",
         configType: json["config_type"] ?? "V2ray",
         userCount: json["user_count"],
-        serverFlagPath: json["server_flag_path"] ?? "",
+        serverFlagPath:  "https://app.parsiweb.net/uploads/"+json["server_flag_path"],
         configLink: json["config_Link"],
         v: json["__v"],
       );
@@ -123,7 +123,7 @@ class TrainingModel {
     return TrainingModel(
       id: json['_id'] ?? '', // معمولا مونگوس _id برمی‌گرداند
       title: json['title'] ?? 'بدون عنوان',
-      videoLink: json['videoLink'] ?? '',
+      videoLink:  "https://app.parsiweb.net/uploads/"+json['videoLink'] ?? '',
     );
   }
 }

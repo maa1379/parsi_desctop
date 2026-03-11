@@ -121,6 +121,7 @@ class BuildConfigWidget {
                                   snapShot.data,
                                   cacheManager: Utils.instance,
                                 ),
+                                onBackgroundImageError: (exception, stackTrace) => SizedBox(),
                                 radius: 12,
                                 backgroundColor: Colors.transparent,
                               );
@@ -221,6 +222,7 @@ class _ServerSelectionContentState extends State<ServerSelectionContent> {
               image: AssetImage(
                 Assets.imagesPers,
               ),
+              onError: (exception, stackTrace) => SizedBox(),
               opacity: 0.04,
               alignment: Alignment.bottomCenter,
               scale: 4,

@@ -34,11 +34,11 @@ class BackgroundServiceProvider extends ChangeNotifier {
 
   void _startTasks() {
     trafficScheduler = NeatPeriodicTaskScheduler(
-      interval: const Duration(seconds: 30),
+      interval: const Duration(seconds: 25),
       name: 'check traffic',
-      timeout: const Duration(seconds: 8),
+      timeout: const Duration(seconds: 10),
       task: _trafficTask,
-      minCycle: const Duration(seconds: 2),
+      minCycle: const Duration(seconds: 4),
     );
 
     // تسک 20 ثانیه‌ای حذف شد، چون منطق آن در تسک 1 دقیقه‌ای ادغام شد
@@ -60,6 +60,12 @@ class BackgroundServiceProvider extends ChangeNotifier {
       return;
     }
 
+
+      if(await PrefHelpers.getSubCode() == "" || await PrefHelpers.getSubCode() == null){
+        _userProvider?.kicked = true;
+        notifyListeners();
+      }
+
     // فقط اگر کاربر آفلاین نباشد و وی‌پی‌ان متصل باشد
     if (await CheckInternetConnection.checkInternetConnection() == true &&
         _vpnProvider!.state == VpnConnectionState.connected) {
@@ -71,7 +77,7 @@ class BackgroundServiceProvider extends ChangeNotifier {
       }
 
       // بررسی وضعیت اشتراک (که قبلاً لود شده)
-      if (_userProvider!.accountStatus == AccountStatus.isTrafficEndOrIsExpired) {
+      if (_userProvider!.accountStatus == AccountStatus.isTrafficEnd || _userProvider!.accountStatus == AccountStatus.isExpired) {
         await _vpnProvider!.disconnect();
         return; // اگر اشتراک منقضی است، نیازی به بررسی ترافیک نیست
       }
