@@ -38,15 +38,11 @@ jobs:
         run: flutter build windows --release
 
       # --- مرحله جدید: نصب و اجرای Inno Setup ---
-# --- Install Inno Setup ---
-      - name: Setup Inno Setup
-        uses: MinionguyJoss/setup-inno-setup@v1
-        with:
-          version: "6.2.1"
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress
       
       - name: Compile Installer
         run: iscc installer.iss
-# ---------------------------
       # ----------------------------------------
 
       - name: Upload Installer Artifact
